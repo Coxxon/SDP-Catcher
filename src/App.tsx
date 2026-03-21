@@ -79,9 +79,7 @@ function App() {
     activeIpRef.current = activeIp;
   }, [activeIp]);
 
-  useEffect(() => {
-    document.documentElement.style.fontSize = `${zoomLevel * 100}%`;
-  }, [zoomLevel]);
+  // Root zoom removed - using local zoom instead
 
   // Global Zoom Shortcuts
   useEffect(() => {
@@ -479,8 +477,9 @@ function App() {
       className="flex flex-col h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none"
     >
       <TitleBar />
-      {/* Dynamic Workspace Container */}
-      <div className="flex flex-1 overflow-x-auto overflow-y-hidden">
+      <div className="flex flex-col flex-1 overflow-hidden" style={{ zoom: zoomLevel }}>
+        {/* Dynamic Workspace Container */}
+        <div className="flex flex-1 overflow-x-auto overflow-y-hidden">
         <InterfaceList
           activeIp={activeIp}
           isSniffing={isSniffing}
@@ -590,6 +589,7 @@ function App() {
             </div>
         </div>
       </footer>
+      </div>
 
       <style>{`
         @keyframes damageFloat {

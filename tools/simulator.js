@@ -7,110 +7,106 @@ const PTP_PORT = 320;
 
 const server = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 
-// Liste des constructeurs et leurs intervalles d'annonce SAP
+// Configuration des constructeurs basée sur ta table OUI (Rust)
 const manufacturers = [
-  { name: "Riedel", interval: 10000 },
-  { name: "Audinate_Dante", interval: 30000 },
-  { name: "Yamaha", interval: 30000 },
-  { name: "Lawo", interval: 30000 },
-  { name: "Merging", interval: 30000 },
-  { name: "DirectOut", interval: 30000 },
-  { name: "Digico", interval: 30000 },
-  { name: "SSL", interval: 30000 },
-  { name: "Allen_Heath", interval: 30000 },
-  { name: "QSC", interval: 30000 },
-  { name: "Avid", interval: 30000 },
-  { name: "Axia_Telos", interval: 30000 },
-  { name: "Wheatstone", interval: 30000 },
-  { name: "Ross_Video", interval: 35000 },
-  { name: "Evertz", interval: 35000 },
-  { name: "Grass_Valley", interval: 35000 },
-  { name: "TSL", interval: 35000 },
-  { name: "Calrec", interval: 35000 },
-  { name: "ClearCom", interval: 35000 },
-  { name: "RTS_Bosch", interval: 35000 },
-  { name: "Shure", interval: 30000 },
-  { name: "Sennheiser", interval: 30000 },
-  { name: "Audio_Technica", interval: 30000 },
-  { name: "BirdDog", interval: 35000 },
-  { name: "Blackmagic", interval: 35000 },
-  { name: "Focusrite", interval: 30000 },
-  { name: "Genelec", interval: 30000 },
-  { name: "Studer", interval: 30000 },
-  { name: "Sonifex", interval: 30000 },
-  { name: "Neumann", interval: 30000 },
-  { name: "Apogee", interval: 30000 },
-  { name: "Behringer_Midas", interval: 30000 },
-  { name: "Sound_Devices", interval: 30000 },
-  { name: "Luminex", interval: 35000 },
-  { name: "Netgear_AV", interval: 35000 },
-  { name: "d_b_audiotechnik", interval: 35000 },
-  { name: "L_Acoustics", interval: 35000 },
-  { name: "Meyer_Sound", interval: 35000 },
-  { name: "Klark_Teknik", interval: 30000 },
-  { name: "Kramer", interval: 30000 },
-  { name: "ATEN", interval: 30000 },
-  { name: "EmberPlus_Gateway", interval: 30000 },
-  { name: "Unknown_Device", interval: 60000 }
+  { name: "Riedel", oui: "001ACA", interval: 10000 },
+  { name: "Audinate_Dante", oui: "001DC1", interval: 30000 },
+  { name: "Yamaha", oui: "00A0DE", interval: 30000 },
+  { name: "Lawo", oui: "00907F", interval: 30000 },
+  { name: "Merging", oui: "001564", interval: 30000 },
+  { name: "SSL", oui: "000B8C", interval: 30000 },
+  { name: "Allen_Heath", oui: "001B66", interval: 30000 },
+  { name: "Avid", oui: "00055D", interval: 30000 },
+  { name: "Shure", oui: "0024BE", interval: 30000 },
+  { name: "Sennheiser", oui: "000462", interval: 30000 },
+  { name: "Audio_Technica", oui: "00091F", interval: 30000 },
+  { name: "Blackmagic", oui: "E091F5", interval: 35000 },
+  { name: "Focusrite", oui: "000EEC", interval: 30000 },
+  { name: "Genelec", oui: "000A8F", interval: 30000 },
+  { name: "Neumann", oui: "000AF3", interval: 30000 },
+  { name: "Apogee", oui: "00066A", interval: 30000 },
+  { name: "Luminex", oui: "001B55", interval: 35000 },
+  { name: "Netgear_AV", oui: "D83ADD", interval: 35000 },
+  { name: "d_b_audiotechnik", oui: "00242C", interval: 35000 },
+  { name: "L_Acoustics", oui: "903EAB", interval: 35000 },
+  { name: "Meyer_Sound", oui: "000D4B", interval: 35000 },
+  { name: "DirectOut", oui: "001E4C", interval: 30000 },
+  { name: "Digico", oui: "000C6E", interval: 30000 },
+  { name: "QSC", oui: "90E2BA", interval: 30000 },
+  { name: "Axia_Telos", oui: "00900B", interval: 30000 },
+  { name: "Wheatstone", oui: "0014C2", interval: 30000 },
+  { name: "Ross_Video", oui: "001CCC", interval: 35000 },
+  { name: "Evertz", oui: "0005CA", interval: 35000 },
+  { name: "Grass_Valley", oui: "000DEC", interval: 35000 },
+  { name: "TSL", oui: "000F72", interval: 35000 },
+  { name: "Calrec", oui: "001D78", interval: 35000 },
+  { name: "ClearCom", oui: "001A1E", interval: 35000 },
+  { name: "RTS_Bosch", oui: "00136F", interval: 35000 },
+  { name: "BirdDog", oui: "027F61", interval: 35000 },
+  { name: "Studer", oui: "000A0E", interval: 30000 },
+  { name: "Sonifex", oui: "0090F5", interval: 30000 },
+  { name: "Behringer_Midas", oui: "001F7A", interval: 30000 },
+  { name: "Sound_Devices", oui: "00196B", interval: 30000 },
+  { name: "Klark_Teknik", oui: "0005A6", interval: 30000 },
+  { name: "Kramer", oui: "000F7C", interval: 30000 },
+  { name: "ATEN", oui: "000BF6", interval: 30000 }
 ];
 
-// Topologie PTP Spécifique
+// Topologie PTP Spécifique (Riedel & Luminex)
 const G_RIEDEL_ID = '00-1A-CA-FF-FE-AA-BB-CC';
-const G_LUMINEX_ID = '00-d0-bb-ff-fe-11-22-33';
+const G_LUMINEX_ID = '00-1B-55-FF-FE-11-22-33';
 
-// Génération automatique du tableau devices
+// Générateur de Clock ID (EUI-64) respectant le OUI constructeur
+const generatePtpId = (oui, ip) => {
+  const lastPart = parseInt(ip.split('.')[3]).toString(16).padStart(2, '0').toUpperCase();
+  const formattedOui = oui.match(/.{1,2}/g).join('-');
+  // Format standard : OUI-FF-FE-00-Suffix
+  return `${formattedOui}-FF-FE-00-${lastPart}`;
+};
+
+// Initialisation des devices
 let currentIpSuffix = 121;
 let currentMulticastSubnet = 10;
 
 const devices = manufacturers.map(m => {
   const ip = `192.168.1.${currentIpSuffix++}`;
   const multicast = `239.69.${currentMulticastSubnet++}.1`;
+  const ptpId = (m.name === "Riedel") ? G_RIEDEL_ID :
+    (m.name === "Luminex") ? G_LUMINEX_ID :
+      generatePtpId(m.oui, ip);
+
   return {
     name: m.name,
     ip: ip,
+    ptpId: ptpId,
     interval: m.interval,
-    streams: [
-      { name: `${m.name}_Main_Stream`, multicast: multicast }
-    ]
+    streams: [{ name: `${m.name}_Main_Stream`, multicast: multicast }]
   };
 });
 
-// Injection d'appareils pour topologie complexe
-devices.push(
-  { name: "Riedel_Artist_1024", ip: "192.168.1.50", interval: 10000, specificPtpId: G_RIEDEL_ID, streams: [{ name: "Artist_Coms_Main", multicast: "239.69.50.1" }] },
-  { name: "Bolero_Antenna_BC", ip: "192.168.1.51", interval: 10000, specificPtpId: G_LUMINEX_ID, streams: [{ name: "Bolero_BC_Stream", multicast: "239.69.51.1" }] },
-  { name: "Bolero_Antenna_TC", ip: "192.168.1.52", interval: 10000, specificPtpId: G_RIEDEL_ID, streams: [{ name: "Bolero_TC_Stream", multicast: "239.69.52.1" }] }
-);
-
-const generatePtpId = (ip) => {
-  const parts = ip.split('.');
-  const last = parseInt(parts[3]).toString(16).padStart(2, '0').toUpperCase();
-  return `00-11-22-FF-FE-88-88-${last}`;
-};
-
-const generatePayload = (deviceName, deviceIp, streamName, multicastIp, specificPtpId) => {
-  const ptpId = specificPtpId || generatePtpId(deviceIp);
+// Payload SDP conforme AES67 / SAP
+const generatePayload = (device) => {
+  const stream = device.streams[0];
   return Buffer.from(
     'SAP_HEADER_MOCK\n' +
     'v=0\n' +
-    `o=- 123456789 1 IN IP4 ${deviceIp}\n` +
-    `s=${streamName}\n` +
-    `i=${deviceName}\n` +
-    `c=IN IP4 ${multicastIp}\n` +
+    `o=- 123456789 1 IN IP4 ${device.ip}\n` +
+    `s=${stream.name}\n` +
+    `i=${device.name}\n` +
+    `c=IN IP4 ${stream.multicast}\n` +
     't=0 0\n' +
     'm=audio 5004 RTP/AVP 97\n' +
     'a=rtpmap:97 L24/48000/2\n' +
-    'a=ptime:1\n' +
-    `a=ts-refclk:ptp=IEEE1588-2008:${ptpId}:0\n` +
+    `a=ts-refclk:ptp=IEEE1588-2008:${device.ptpId}:0\n` +
     'a=recvonly'
   );
 };
 
+// Construction du message PTP Announce (Binaire)
 const createPtpAnnounceBuffer = (ptpId, domain = 0) => {
   const buf = Buffer.alloc(64);
-  buf[0] = 0x0B; // Announce messageType
-  buf[4] = domain; // domainNumber
-  // ClockIdentity offset 20
+  buf[0] = 0x0B; // Message Type: Announce
+  buf[4] = domain;
   const hex = ptpId.replace(/-/g, '');
   for (let i = 0; i < 8; i++) {
     buf[20 + i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
@@ -119,54 +115,34 @@ const createPtpAnnounceBuffer = (ptpId, domain = 0) => {
 };
 
 server.on('error', (err) => {
-  console.error(`Simulator error:\n${err.stack}`);
+  console.error(`Simulator Error: ${err.stack}`);
   server.close();
 });
 
 server.on('listening', () => {
-  const address = server.address();
-  console.log(`🚀 Multi-Vendor Simulator active on ${address.address}:${address.port}`);
-  console.log(`📡 Simulating ${devices.length} distinct AES67 endpoints (from 192.168.1.121)...`);
+  const addr = server.address();
+  console.log(`🚀 Multi-Vendor Simulator active on ${addr.address}:${addr.port}`);
+  console.log(`📡 Simulating ${devices.length} manufacturers with OUI-matching PTP IDs...`);
 
-  // Setup independent loops
+  // Boucles SAP indépendantes
   devices.forEach(device => {
-    // Initial send so we don't wait for the first interval
-    device.streams.forEach(stream => {
-      const payload = generatePayload(device.name, device.ip, stream.name, stream.multicast, device.specificPtpId);
-      server.send(payload, 0, payload.length, PORT, MULTICAST_ADDR, (err) => {
-        if (err) console.error(`Error sending ${stream.name}:`, err);
-      });
-    });
+    const sendSap = () => {
+      const payload = generatePayload(device);
+      server.send(payload, 0, payload.length, PORT, MULTICAST_ADDR);
+    };
 
-    setInterval(() => {
-      device.streams.forEach(stream => {
-        const payload = generatePayload(device.name, device.ip, stream.name, stream.multicast, device.specificPtpId);
-        server.send(payload, 0, payload.length, PORT, MULTICAST_ADDR, (err) => {
-          if (err) console.error(`Error sending ${stream.name}:`, err);
-        });
-      });
-      console.log(`[${new Date().toLocaleTimeString()}] Sent ${device.name} SAP heartbeats (${device.ip}) @ ${device.interval}ms`);
-    }, device.interval);
+    sendSap(); // Premier envoi immédiat
+    setInterval(sendSap, device.interval);
   });
 
-  const PTP_PORT = 320;
-  const PTP_ADDR = '224.0.1.129';
-
+  // Boucle PTP Announce (Toutes les secondes)
   setInterval(() => {
-    // Domain 0 - Riedel
-    const buf0 = createPtpAnnounceBuffer(G_RIEDEL_ID, 0);
-    server.send(buf0, 0, buf0.length, PTP_PORT, PTP_ADDR, (err) => {
-      if (err) console.error('Error sending PTP Announce (Dom 0):', err);
-    });
+    const bRiedel = createPtpAnnounceBuffer(G_RIEDEL_ID, 0);
+    server.send(bRiedel, 0, bRiedel.length, PTP_PORT, PTP_MULTICAST_ADDR);
 
-    // Domain 127 - Luminex
-    const buf127 = createPtpAnnounceBuffer(G_LUMINEX_ID, 127);
-    server.send(buf127, 0, buf127.length, PTP_PORT, PTP_ADDR, (err) => {
-      if (err) console.error('Error sending PTP Announce (Dom 127):', err);
-    });
-
-  }, 1000); // 1s
-
+    const bLuminex = createPtpAnnounceBuffer(G_LUMINEX_ID, 127);
+    server.send(bLuminex, 0, bLuminex.length, PTP_PORT, PTP_MULTICAST_ADDR);
+  }, 1000);
 });
 
 server.bind(() => {

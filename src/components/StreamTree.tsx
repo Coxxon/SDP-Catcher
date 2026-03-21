@@ -274,6 +274,8 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         return `${base} bg-orange-500 shadow-[0_0_4px_rgba(249,115,22,0.35)]`;
       case "partial":
         return `${base} bg-orange-500 shadow-[0_0_4px_rgba(249,115,22,0.35)] animate-blink`;
+      case "none":
+        return `${base} bg-neutral-600 opacity-50`;
       default:
         return `${base} bg-neutral-600 opacity-50`;
     }
@@ -290,7 +292,8 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     return counts;
   }, [devices, isSniffing]);
 
-  const globalStatus = stats.offline > 0 ? 'offline' : (stats.standby > 0 ? 'standby' : 'online');
+  const totalStreams = sortedDevices.reduce((acc, d) => acc + d.streams.length, 0);
+  const globalStatus = totalStreams === 0 ? 'none' : (stats.offline > 0 ? 'offline' : (stats.standby > 0 ? 'standby' : 'online'));
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-[15.9375rem] min-w-[15.9375rem] max-w-[15.9375rem] shrink-0">

@@ -3330,6 +3330,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
+name = "sdp-catcher"
+version = "0.1.0"
+dependencies = [
+ "netdev",
+ "pnet",
+ "pnet_datalink",
+ "pnet_packet",
+ "serde",
+ "serde_json",
+ "socket2 0.5.10",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-fs",
+ "tauri-plugin-opener",
+ "tauri-plugin-window-state",
+]
+
+[[package]]
 name = "selectors"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3920,25 +3939,6 @@ dependencies = [
  "webview2-com",
  "window-vibrancy",
  "windows",
-]
-
-[[package]]
-name = "tauri-app"
-version = "0.1.0"
-dependencies = [
- "netdev",
- "pnet",
- "pnet_datalink",
- "pnet_packet",
- "serde",
- "serde_json",
- "socket2 0.5.10",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-fs",
- "tauri-plugin-opener",
- "tauri-plugin-window-state",
 ]
 
 [[package]]

@@ -291,7 +291,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                     matched_interface = selected_ips[0].clone();
                                 }
 
-                                let mut table = discovery_ptp.lock().unwrap();
+                                let table = discovery_ptp.lock().unwrap();
                                 let (name, final_ip) = if let Some(info) = table.get(&ptp_id) {
                                     (info.name.clone(), info.ip.clone())
                                 } else if let Some(info) = table.get(&source_ip) {
@@ -384,7 +384,11 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                             app.emit("discovery-update", (ptp_id_from_sdp.clone(), DeviceInfo { ip: origin_ip.clone(), name: best_name.clone() })).ok();
                         }
 
-                        let mfr_enum = identify_manufacturer(&mac);
+                        // Manufacturer identification with PTP fallback
+                        let mut mfr_enum = identify_manufacturer(&mac);
+                        if mfr_enum == manufacturer::Manufacturer::Unknown && !ptp_id_from_sdp.is_empty() {
+                            mfr_enum = identify_manufacturer(&ptp_id_from_sdp);
+                        }
                         
                         // Dynamically retrieve the latest state for this IP specifically to allow hot-toggling without app restart
                         let use_global = {
