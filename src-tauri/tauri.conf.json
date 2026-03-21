@@ -34,9 +34,10 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "publisher": "Allan Le Guyader",
     "windows": {
       "wix": {
-        "language": "en-US"
+        "language": "fr-FR"
       }
     }
   }
