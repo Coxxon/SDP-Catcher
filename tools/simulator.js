@@ -29,27 +29,7 @@ const manufacturers = [
   { name: "Netgear_AV", oui: "D83ADD", interval: 35000 },
   { name: "d_b_audiotechnik", oui: "00242C", interval: 35000 },
   { name: "L_Acoustics", oui: "903EAB", interval: 35000 },
-  { name: "Meyer_Sound", oui: "000D4B", interval: 35000 },
-  { name: "DirectOut", oui: "001E4C", interval: 30000 },
-  { name: "Digico", oui: "000C6E", interval: 30000 },
-  { name: "QSC", oui: "90E2BA", interval: 30000 },
-  { name: "Axia_Telos", oui: "00900B", interval: 30000 },
-  { name: "Wheatstone", oui: "0014C2", interval: 30000 },
-  { name: "Ross_Video", oui: "001CCC", interval: 35000 },
-  { name: "Evertz", oui: "0005CA", interval: 35000 },
-  { name: "Grass_Valley", oui: "000DEC", interval: 35000 },
-  { name: "TSL", oui: "000F72", interval: 35000 },
-  { name: "Calrec", oui: "001D78", interval: 35000 },
-  { name: "ClearCom", oui: "001A1E", interval: 35000 },
-  { name: "RTS_Bosch", oui: "00136F", interval: 35000 },
-  { name: "BirdDog", oui: "027F61", interval: 35000 },
-  { name: "Studer", oui: "000A0E", interval: 30000 },
-  { name: "Sonifex", oui: "0090F5", interval: 30000 },
-  { name: "Behringer_Midas", oui: "001F7A", interval: 30000 },
-  { name: "Sound_Devices", oui: "00196B", interval: 30000 },
-  { name: "Klark_Teknik", oui: "0005A6", interval: 30000 },
-  { name: "Kramer", oui: "000F7C", interval: 30000 },
-  { name: "ATEN", oui: "000BF6", interval: 30000 }
+  { name: "Meyer_Sound", oui: "000D4B", interval: 35000 }
 ];
 
 // Topologie PTP Spécifique (Riedel & Luminex)

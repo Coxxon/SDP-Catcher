@@ -384,10 +384,16 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                             app.emit("discovery-update", (ptp_id_from_sdp.clone(), DeviceInfo { ip: origin_ip.clone(), name: best_name.clone() })).ok();
                         }
 
-                        // Manufacturer identification with PTP fallback
-                        let mut mfr_enum = identify_manufacturer(&mac);
-                        if mfr_enum == manufacturer::Manufacturer::Unknown && !ptp_id_from_sdp.is_empty() {
-                            mfr_enum = identify_manufacturer(&ptp_id_from_sdp);
+                        // Manufacturer identification: PTP ID OUI has absolute priority
+                        let mut mfr_enum = if !ptp_id_from_sdp.is_empty() {
+                            identify_manufacturer(&ptp_id_from_sdp)
+                        } else {
+                            manufacturer::Manufacturer::Unknown
+                        };
+                        
+                        // Fallback to MAC OUI if PTP identification failed or was missing
+                        if mfr_enum == manufacturer::Manufacturer::Unknown {
+                            mfr_enum = identify_manufacturer(&mac);
                         }
                         
                         // Dynamically retrieve the latest state for this IP specifically to allow hot-toggling without app restart
