@@ -110,6 +110,8 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(AppState {
             sniffer_stop_flag: Mutex::new(None),
         })
