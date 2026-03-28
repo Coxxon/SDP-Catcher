@@ -85,7 +85,7 @@ impl Manufacturer {
             Manufacturer::Luminex => "Luminex".to_string(),
             Manufacturer::NetgearAV => "Netgear AV".to_string(),
             Manufacturer::DBAudiotechnik => "d&b audiotechnik".to_string(),
-            Manufacturer::LAco => "L-Acoustics".to_string(),
+            Manufacturer::LAco => "L'Acoustics".to_string(),
             Manufacturer::MeyerSound => "Meyer Sound".to_string(),
             Manufacturer::KlarkTeknik => "Klark Teknik".to_string(),
             Manufacturer::Kramer => "Kramer".to_string(),
