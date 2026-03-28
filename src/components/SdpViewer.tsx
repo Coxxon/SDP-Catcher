@@ -3,6 +3,7 @@ import { Copy, Check, Download, Activity, FileText, ChevronUp, ChevronDown } fro
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 
 interface SdpViewerProps {
   sdp: string | null;
@@ -17,6 +18,18 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
 
   useEffect(() => {
     invoke<Record<string, { ip: string; name: string }>>("get_arp_table").then(setArpTable);
+
+    const unlisten = listen<[string, { ip: string; name: string }]>("discovery-update", (event) => {
+      const [mac, info] = event.payload;
+      setArpTable(prev => ({
+        ...prev,
+        [mac]: info
+      }));
+    });
+
+    return () => {
+       unlisten.then(fn => fn());
+    };
   }, []);
 
   useEffect(() => {

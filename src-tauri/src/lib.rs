@@ -198,14 +198,29 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                         );
 
                         let mut table = discovery_ptp.lock().unwrap();
-                        table.entry(mac).or_insert(DeviceInfo {
+                        let mut updated = false;
+
+                        let mac_entry = table.entry(mac.clone()).or_insert(DeviceInfo {
                             ip: source_ip.clone(),
                             name: "---".to_string(),
                         });
-                        table.entry(ptp_id).or_insert(DeviceInfo {
+                        if mac_entry.ip != source_ip {
+                            mac_entry.ip = source_ip.clone();
+                            updated = true;
+                        }
+
+                        let ptp_entry = table.entry(ptp_id.clone()).or_insert(DeviceInfo {
                             ip: source_ip.clone(),
                             name: "---".to_string(),
                         });
+                        if ptp_entry.ip != source_ip {
+                            ptp_entry.ip = source_ip.clone();
+                            updated = true;
+                        }
+
+                        if updated {
+                            app_ptp.emit("discovery-update", (mac.clone(), mac_entry.clone())).ok();
+                        }
                     }
 
                     let payload_str = String::from_utf8_lossy(payload);
@@ -226,6 +241,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
         for ip in &interface_ips {
             let stop_flag_lldp = Arc::clone(&stop_flag);
             let discovery_lldp = Arc::clone(&discovery_table_arc);
+            let app_lldp = app.clone();
             let target_ip = ip.clone();
 
             thread::spawn(move || {
@@ -245,7 +261,15 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                             if eth.get_ethertype() == EtherTypes::Lldp {
                                 if let Some((mac, name, ip)) = parse_lldp(eth.payload()) {
                                     let mut table = discovery_lldp.lock().unwrap();
-                                    table.insert(mac, DeviceInfo { ip, name });
+                                    let entry = table.entry(mac.clone()).or_insert(DeviceInfo {
+                                        ip: ip.clone(),
+                                        name: name.clone(),
+                                    });
+                                    if entry.ip != ip || entry.name != name {
+                                        entry.ip = ip;
+                                        entry.name = name;
+                                        app_lldp.emit("discovery-update", (mac, entry.clone())).ok();
+                                    }
                                 }
                             }
                         }
@@ -262,29 +286,38 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                 let payload = &buf[..size];
                 if let Some(pos) = payload.windows(3).position(|w| w == b"v=0") {
                     if let Ok(sdp_content) = std::str::from_utf8(&payload[pos..]) {
+                        // SAP Gleaning: Prioritize 's=' for Stream/Device name, then 'i='
                         let mut origin_ip = src.ip().to_string();
-                        let mut device_name = "---".to_string();
+                        let mut sap_name = "---".to_string();
+                        let mut stream_name = "---".to_string();
 
                         for line in sdp_content.lines() {
                             if line.starts_with("o=") {
                                 let parts: Vec<&str> = line.split_whitespace().collect();
                                 if parts.len() >= 6 { origin_ip = parts[5].to_string(); }
+                            } else if line.starts_with("s=") {
+                                stream_name = line[2..].trim().to_string();
                             } else if line.starts_with("i=") {
-                                device_name = line[2..].trim().to_string();
+                                sap_name = line[2..].trim().to_string();
                             }
                         }
 
+                        // Use s= if available (best for broadcast streams), otherwise i=
+                        let best_name = if stream_name != "---" && !stream_name.is_empty() { stream_name } else { sap_name };
+
                         let (mac, _oui) = get_mac_from_arp(&origin_ip);
                         
-                        // SAP Gleaning
                         if mac != "Unknown" {
                             let mut table = discovery_sap.lock().unwrap();
                             let entry = table.entry(mac.clone()).or_insert(DeviceInfo {
                                 ip: origin_ip.clone(),
-                                name: device_name.clone(),
+                                name: best_name.clone(),
                             });
-                            if entry.name == "---" && device_name != "---" {
-                                entry.name = device_name;
+                            
+                            if entry.ip != origin_ip || (best_name != "---" && entry.name != best_name) {
+                                entry.ip = origin_ip.clone();
+                                if best_name != "---" { entry.name = best_name.clone(); }
+                                app.emit("discovery-update", (mac.clone(), entry.clone())).ok();
                             }
                         }
 
