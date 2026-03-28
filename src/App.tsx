@@ -11,17 +11,26 @@ export interface Stream {
   multicastIp: string;
   sdpContent: string;
   lastSeen: number;
+  mac: string;
+  manufacturer: string;
+  sapTimeoutMs: number;
 }
 
 export interface Device {
   name: string;
   ip: string;
+  mac: string;
+  manufacturer: string;
+  sapTimeoutMs: number;
   streams: Stream[];
 }
 
 interface SdpDiscoveredEvent {
   source_ip: string;
   sdp_content: string;
+  mac: string;
+  manufacturer: string;
+  sap_timeout_ms: number;
 }
 
 export interface InterfaceInfo {
@@ -39,6 +48,7 @@ function App() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [masterClocks, setMasterClocks] = useState<{name: string, ip: string}[]>([]);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
+  const [unknownTimeout, setUnknownTimeout] = useState(60);
 
   const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string; sessionInfo: string | null } => {
     const lines = raw.split(/\r?\n/);
@@ -101,8 +111,7 @@ function App() {
 
   useEffect(() => {
     const unlisten = listen<SdpDiscoveredEvent>("sdp-discovered", (event) => {
-      console.log("📥 Évènement IPC reçu depuis Rust :", event.payload);
-      const { sdp_content } = event.payload;
+      const { sdp_content, mac, manufacturer, sap_timeout_ms } = event.payload;
       const { name, multicastIp, originIp, sessionInfo } = parseSdp(sdp_content);
 
       if (originIp === "0.0.0.0") return;
@@ -116,8 +125,10 @@ function App() {
           const newDevices = [...prev];
           const device = { ...newDevices[existingDeviceIndex] };
           
-          // Mémoriser/Mettre à jour le nom convivial si reçu
           device.name = deviceName;
+          device.mac = mac;
+          device.manufacturer = manufacturer;
+          device.sapTimeoutMs = sap_timeout_ms;
 
           const existingStreamIndex = device.streams.findIndex((s) => s.name === name);
 
@@ -127,6 +138,9 @@ function App() {
               sdpContent: sdp_content,
               multicastIp,
               lastSeen: timestamp,
+              mac,
+              manufacturer,
+              sapTimeoutMs: sap_timeout_ms,
             };
           } else {
             device.streams.push({
@@ -135,6 +149,9 @@ function App() {
               multicastIp,
               sdpContent: sdp_content,
               lastSeen: timestamp,
+              mac,
+              manufacturer,
+              sapTimeoutMs: sap_timeout_ms,
             });
           }
           newDevices[existingDeviceIndex] = device;
@@ -145,6 +162,9 @@ function App() {
             {
               name: deviceName,
               ip: originIp,
+              mac,
+              manufacturer,
+              sapTimeoutMs: sap_timeout_ms,
               streams: [
                 {
                   id: `${originIp}-${name}`,
@@ -152,6 +172,9 @@ function App() {
                   multicastIp,
                   sdpContent: sdp_content,
                   lastSeen: timestamp,
+                  mac,
+                  manufacturer,
+                  sapTimeoutMs: sap_timeout_ms,
                 },
               ],
             },
@@ -169,14 +192,13 @@ function App() {
     });
 
     return () => {
-      unlisten.then((f) => f());
-      unlistenPtp.then((f) => f());
+        unlisten.then((f) => f());
+        unlistenPtp.then((f) => f());
     };
   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      // Periodic refresh to trigger online/offline recalculations in UI
       setDevices(prev => [...prev]);
     }, 2000);
     return () => clearInterval(interval);
@@ -187,7 +209,7 @@ function App() {
     setDevices(prev => {
       return prev.map(device => ({
         ...device,
-        streams: device.streams.filter(stream => now - stream.lastSeen <= 15000)
+        streams: device.streams.filter(stream => now - stream.lastSeen <= stream.sapTimeoutMs)
       })).filter(device => device.streams.length > 0);
     });
   };
@@ -197,6 +219,15 @@ function App() {
         setActiveIp(null);
     } else {
         setActiveIp(ip);
+    }
+  };
+
+  const handleTimeoutChange = async (val: string) => {
+    const num = parseInt(val) || 0;
+    setUnknownTimeout(num);
+    // Persist to backend
+    if (num >= 60 && num <= 300) {
+        await invoke("set_unknown_timeout", { seconds: num });
     }
   };
 
@@ -246,8 +277,8 @@ function App() {
         sourceIp={selectedStream ? `${selectedStream.name} (${selectedStream.multicastIp})` : undefined}
       />
       
-      {/* Footer PTP Clock */}
-      <footer className="fixed bottom-0 left-0 w-full h-7 bg-zinc-950 border-t border-zinc-800 flex items-center px-4 z-50">
+      {/* Footer Management */}
+      <footer className="fixed bottom-0 left-0 w-full h-7 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between px-4 z-50">
         <div className="flex items-center gap-2">
             <div className={`w-1.5 h-1.5 rounded-full ${activeClock ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-500 animate-pulse'}`} />
             <span className="text-[10px] text-zinc-500 font-bold tracking-tight uppercase">
@@ -256,6 +287,23 @@ function App() {
                     {activeClock ? `${activeClock.name} (${activeClock.ip})` : '--'}
                 </span>
             </span>
+        </div>
+
+        <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
+                <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-wider">Default SAP Timeout</span>
+                <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded px-1 h-5">
+                    <input 
+                        type="number" 
+                        min="60"
+                        max="300"
+                        value={unknownTimeout}
+                        onChange={(e) => handleTimeoutChange(e.target.value)}
+                        className="w-8 bg-transparent text-[10px] text-zinc-300 font-mono text-center focus:outline-none"
+                    />
+                    <span className="text-[9px] text-zinc-600 font-bold">s</span>
+                </div>
+            </div>
         </div>
       </footer>
     </main>

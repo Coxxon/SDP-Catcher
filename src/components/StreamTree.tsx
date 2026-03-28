@@ -23,16 +23,16 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     onStreamSelect(stream);
   };
 
-  const isStreamOnline = (lastSeen: number) => Date.now() - lastSeen <= 15000;
+  const isStreamOnline = (stream: Stream) => Date.now() - stream.lastSeen <= stream.sapTimeoutMs;
 
   const getStreamStatus = (stream: Stream) => {
     if (!isSniffing) return "standby";
-    return isStreamOnline(stream.lastSeen) ? "online" : "offline";
+    return isStreamOnline(stream) ? "online" : "offline";
   };
 
   const getDeviceStatus = (device: Device) => {
     if (!isSniffing) return "standby";
-    const statuses = device.streams.map(s => isStreamOnline(s.lastSeen));
+    const statuses = device.streams.map(s => isStreamOnline(s));
     const allOnline = statuses.every(s => s === true);
     const allOffline = statuses.every(s => s === false);
     
@@ -108,6 +108,25 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
 
                 {isExpanded && (
                   <div className="space-y-0 bg-black/10">
+                    {/* Device Meta Info */}
+                    <div className="px-8 py-1.5 bg-neutral-900/50 border-b border-neutral-800/30 flex flex-col gap-0.5">
+                        <div className="flex items-center justify-between">
+                            <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Manufacturer</span>
+                            <span className={`text-[10px] ${device.manufacturer === 'Unknown' ? 'text-neutral-600 italic' : 'text-blue-400 font-bold'}`}>
+                                {device.manufacturer}
+                                {device.mac !== 'Unknown' && ` (${device.mac.split(':').slice(0, 3).join(':')})`}
+                                {device.manufacturer === 'Unknown' && ' (fallback)'}
+                            </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                            <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">SAP Timeout</span>
+                            <span className="text-[10px] text-neutral-300 font-mono">
+                                {device.sapTimeoutMs / 1000}s
+                                {device.manufacturer === 'Unknown' && ' (user-defined)'}
+                            </span>
+                        </div>
+                    </div>
+
                     {device.streams.sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
                       const streamStatus = getStreamStatus(stream);
                       const streamStatusClass = getStatusClasses(streamStatus);

@@ -1,3 +1,5 @@
+mod manufacturer;
+
 use serde::Serialize;
 use std::net::{UdpSocket, Ipv4Addr};
 use std::sync::{Arc, Mutex};
@@ -5,6 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
+use manufacturer::{identify_manufacturer, Manufacturer};
 
 #[derive(Serialize)]
 pub struct NetworkInterface {
@@ -17,6 +20,9 @@ pub struct NetworkInterface {
 struct SdpPayload {
     source_ip: String,
     sdp_content: String,
+    mac: String,
+    manufacturer: String,
+    sap_timeout_ms: u64,
 }
 
 #[derive(Serialize, Clone)]
@@ -27,6 +33,26 @@ struct PtpPayload {
 
 pub struct AppState {
     sniffer_stop_flag: Mutex<Option<Arc<AtomicBool>>>,
+    default_unknown_timeout_s: Mutex<u64>,
+}
+
+fn get_mac_from_arp(ip: &str) -> (String, String) {
+    let output = std::process::Command::new("arp")
+        .args(&["-a", ip])
+        .output();
+
+    if let Ok(out) = output {
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        for line in stdout.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 && parts[0] == ip {
+                let mac = parts[1].replace("-", ":").to_uppercase();
+                let oui = mac.split(':').take(3).collect::<Vec<_>>().join("");
+                return (mac, oui);
+            }
+        }
+    }
+    ("Unknown".to_string(), "Unknown".to_string())
 }
 
 #[tauri::command]
@@ -57,6 +83,8 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
     let stop_flag = Arc::new(AtomicBool::new(false));
     *stop_flag_lock = Some(Arc::clone(&stop_flag));
     drop(stop_flag_lock);
+
+    let default_unknown_timeout_s = *state.default_unknown_timeout_s.lock().unwrap();
 
     thread::spawn(move || {
         let sap_addr = Ipv4Addr::new(239, 255, 255, 255);
@@ -130,9 +158,18 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                 let payload = &buf[..size];
                 if let Some(pos) = payload.windows(3).position(|w| w == b"v=0") {
                     if let Ok(sdp_content) = std::str::from_utf8(&payload[pos..]) {
+                        let source_ip = src.ip().to_string();
+                        let (mac, oui) = get_mac_from_arp(&source_ip);
+                        let mfr_enum = identify_manufacturer(&mac);
+                        let mfr_name = mfr_enum.to_string();
+                        let timeout = mfr_enum.default_timeout_ms(default_unknown_timeout_s);
+
                         app.emit("sdp-discovered", SdpPayload {
-                            source_ip: src.ip().to_string(),
+                            source_ip,
                             sdp_content: sdp_content.to_string(),
+                            mac,
+                            manufacturer: mfr_name,
+                            sap_timeout_ms: timeout,
                         }).ok();
                     }
                 }
@@ -147,6 +184,14 @@ fn stop_sniffing(state: State<'_, AppState>) {
     if let Some(old_flag) = stop_flag_lock.take() {
         old_flag.store(true, Ordering::Relaxed);
     }
+}
+
+#[tauri::command]
+fn set_unknown_timeout(seconds: u64, state: State<'_, AppState>) {
+    // Clamping 60-300 as per requirements
+    let clamped = seconds.clamp(60, 300);
+    let mut lock = state.default_unknown_timeout_s.lock().unwrap();
+    *lock = clamped;
 }
 
 #[tauri::command]
@@ -173,8 +218,17 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .manage(AppState { sniffer_stop_flag: Mutex::new(None) })
-        .invoke_handler(tauri::generate_handler![get_network_interfaces, start_sniffing, stop_sniffing, set_network_ip])
+        .manage(AppState { 
+            sniffer_stop_flag: Mutex::new(None),
+            default_unknown_timeout_s: Mutex::new(60),
+        })
+        .invoke_handler(tauri::generate_handler![
+            get_network_interfaces, 
+            start_sniffing, 
+            stop_sniffing, 
+            set_network_ip,
+            set_unknown_timeout
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
