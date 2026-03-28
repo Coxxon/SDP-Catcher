@@ -83,7 +83,7 @@ const generatePayload = (deviceName, deviceIp, streamName, multicastIp) => {
     'm=audio 5004 RTP/AVP 97\n' +
     'a=rtpmap:97 L24/48000/2\n' +
     'a=ptime:1\n' +
-    'a=ts-refclk:ptp=ieee1588-2008:00-11-22-FF-FE-33-44-55:0\n' +
+    'a=ts-refclk:ptp=IEEE1588-2008:00-11-22-FF-FE-33-44-55:0\n' +
     'a=recvonly'
   );
 };

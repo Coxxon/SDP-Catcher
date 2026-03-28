@@ -38,33 +38,38 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   const parseStreamInfo = (raw: string | null) => {
     if (!raw) return null;
     const lines = raw.split(/\r?\n/);
-    let codec = "Unknown";
-    let sampling = "Unknown";
-    let channels = "Unknown";
+    let resolution = "---";
+    let samplingRate = "---";
+    let nbChannels = "---";
     let ptime = "---";
-    let sync = "No Sync";
+    let masterClock = "Internal";
 
     for (const line of lines) {
+      const lowerLine = line.toLowerCase();
       if (line.startsWith("a=rtpmap:")) {
         // Ex: a=rtpmap:96 L24/48000/2
         const parts = line.split(" ");
         if (parts.length >= 2) {
           const params = parts[1].split("/");
-          codec = params[0] || "Unknown";
-          sampling = params[1] ? `${params[1]} Hz` : "Unknown";
-          channels = params[2] || "Unknown";
+          const codec = params[0] || "";
+          if (codec.includes("L24")) resolution = "24 bits";
+          else if (codec.includes("L16")) resolution = "16 bits";
+          else resolution = codec;
+
+          samplingRate = params[1] ? `${params[1]} Hz` : "---";
+          nbChannels = params[2] ? `${params[2]} channels` : "---";
         }
       } else if (line.startsWith("a=ptime:")) {
         ptime = `${line.substring(8).trim()} ms`;
-      } else if (line.indexOf("ts-refclk:ptp=") !== -1) {
-        // Ex: a=ts-refclk:ptp=ieee1588-2008:00-11-22-FF-FE-33-44-55:0
+      } else if (lowerLine.includes("ts-refclk:ptp=")) {
+        // Ex: a=ts-refclk:ptp=IEEE1588-2008:00-11-22-FF-FE-33-44-55:0
         const parts = line.split(":");
         if (parts.length >= 3) {
-           sync = parts[parts.length - 2] || "Unknown";
+           masterClock = parts[parts.length - 2] || "---";
         }
       }
     }
-    return { codec, sampling, channels, ptime, sync };
+    return { resolution, samplingRate, nbChannels, ptime, masterClock };
   };
 
   const streamInfo = parseStreamInfo(sdp);
@@ -139,21 +144,25 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
         {isDrawerOpen && (
           <div className="px-3 pb-3 space-y-1 font-sans">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Format</span>
-              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.codec || "---"} ({streamInfo?.channels || "---"} ch)</span>
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Resolution</span>
+              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.resolution}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Sampling</span>
-              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.sampling || "---"}</span>
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Sampling Rate</span>
+              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.samplingRate}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Nb Channels</span>
+              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.nbChannels}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Packet Time</span>
-              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.ptime || "---"}</span>
+              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.ptime}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Sync (PTP GM)</span>
-              <span className="text-[10px] text-blue-400 font-mono font-bold tracking-tight">
-                {streamInfo?.sync || "Internal"}
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Master Clock</span>
+              <span className="text-[10px] text-neutral-200 font-mono font-bold tracking-tight">
+                {streamInfo?.masterClock}
               </span>
             </div>
           </div>
