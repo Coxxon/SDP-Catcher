@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import { InterfaceList } from "./components/InterfaceList";
 import { StreamTree } from "./components/StreamTree";
 import { SdpViewer } from "./components/SdpViewer";
@@ -29,7 +29,6 @@ function App() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
 
-  // Parsing simple du SDP pour extraire le nom (s=) et l'IP de destination (c=)
   const parseSdp = (raw: string): { name: string; multicastIp: string } => {
     const lines = raw.split(/\r?\n/);
     let name = "Unknown Stream";
@@ -61,7 +60,6 @@ function App() {
           const existingStreamIndex = device.streams.findIndex((s) => s.name === name);
 
           if (existingStreamIndex >= 0) {
-            // Mise à jour d'un flux existant
             device.streams[existingStreamIndex] = {
               ...device.streams[existingStreamIndex],
               sdpContent: sdp_content,
@@ -69,7 +67,6 @@ function App() {
               lastSeen: timestamp,
             };
           } else {
-            // Nouveau flux pour un appareil connu
             device.streams.push({
               id: `${source_ip}-${name}`,
               name,
@@ -81,7 +78,6 @@ function App() {
           newDevices[existingDeviceIndex] = device;
           return newDevices;
         } else {
-          // Nouvel appareil et nouveau flux
           return [
             ...prev,
             {
@@ -109,7 +105,7 @@ function App() {
 
   const handleInterfaceSelect = async (ip: string) => {
     setActiveIp(ip);
-    setDevices([]); // Reset de la liste lors du changement d'interface
+    setDevices([]);
     try {
       await invoke("start_sniffing", { interfaceIp: ip });
     } catch (err) {
@@ -118,19 +114,19 @@ function App() {
   };
 
   return (
-    <main className="flex h-screen w-screen bg-zinc-950 text-zinc-100 overflow-hidden font-sans select-none">
-      <InterfaceList 
-        activeIp={activeIp} 
-        onInterfaceSelect={handleInterfaceSelect} 
+    <main className="flex h-screen w-screen bg-[#0B0C0E] text-[#FFFFFF] overflow-hidden select-none">
+      <InterfaceList
+        activeIp={activeIp}
+        onInterfaceSelect={handleInterfaceSelect}
       />
-      <StreamTree 
-        devices={devices} 
-        onStreamSelect={setSelectedStream} 
-        selectedStreamId={selectedStream?.id || null} 
+      <StreamTree
+        devices={devices}
+        onStreamSelect={setSelectedStream}
+        selectedStreamId={selectedStream?.id || null}
       />
-      <SdpViewer 
-        sdp={selectedStream?.sdpContent || null} 
-        sourceIp={`${selectedStream?.name} (${selectedStream?.multicastIp})`} 
+      <SdpViewer
+        sdp={selectedStream?.sdpContent || null}
+        sourceIp={selectedStream ? `${selectedStream.name} (${selectedStream.multicastIp})` : undefined}
       />
     </main>
   );
