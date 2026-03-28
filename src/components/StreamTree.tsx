@@ -138,7 +138,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                 {isExpanded && (
                   <div className="space-y-0 bg-black/10">
                     {/* Device Meta Info */}
-                    <div className="px-8 py-1.5 bg-neutral-900/50 border-b border-neutral-800/30 flex flex-col gap-0.5">
+                    <div className="px-8 py-2 bg-black/20 border-y border-white/5 shadow-inner flex flex-col gap-0.5">
                       <div className="flex items-center justify-between">
                         <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Manufacturer</span>
                         <span className={`text-[10px] ${device.manufacturer === 'Unknown' ? 'text-neutral-600 italic' : 'text-neutral-200 font-bold'}`}>
