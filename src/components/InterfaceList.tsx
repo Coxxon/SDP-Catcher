@@ -140,7 +140,12 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
                         <div className="flex items-center justify-between mb-2">
                              <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">{iface.name}</span>
                              <div className="flex gap-2">
-                                 <button onClick={() => setEditingIp(null)} className="text-neutral-500 hover:text-white"><X size={14} /></button>
+                                 <button 
+                                     onClick={(e) => { e.stopPropagation(); setEditingIp(null); }} 
+                                     className="text-neutral-500 hover:text-white"
+                                 >
+                                     <X size={14} />
+                                 </button>
                              </div>
                         </div>
                         
@@ -180,7 +185,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
 
                         <button 
                             disabled={isPending}
-                            onClick={() => handleApply(iface)}
+                            onClick={(e) => { e.stopPropagation(); handleApply(iface); }}
                             className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isPending ? <RefreshCw size={12} className="animate-spin" /> : <Check size={12} />}

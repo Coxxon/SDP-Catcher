@@ -76,7 +76,7 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
             }
         };
 
-        socket.set_read_timeout(Some(Duration::from_millis(200))).ok();
+        socket.set_read_timeout(Some(Duration::from_millis(500))).ok();
 
         if let Err(e) = socket.join_multicast_v4(&sap_addr, &iface_addr) {
             eprintln!("Failed to join multicast group: {}", e);
@@ -140,6 +140,7 @@ fn set_network_ip(interface_name: String, is_dhcp: bool, ip: Option<String>, mas
 
     match cmd.output() {
         Ok(output) => {
+            println!("Sortie netsh : {:?}", output);
             if output.status.success() {
                 Ok("Configuration appliquée avec succès".to_string())
             } else {
