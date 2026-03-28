@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Rss, ChevronRight, HardDrive, Trash2, FileText } from "lucide-react";
+import { useState } from "react";
+import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
 import { Stream, Device } from "../App";
 
 import { manufacturerLogos } from "./ManufacturerLogos";
@@ -15,9 +15,19 @@ interface StreamTreeProps {
 export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearOffline, isSniffing }: StreamTreeProps) {
   const [expandedDevices, setExpandedDevices] = useState<string[]>([]);
 
+  const isAllExpanded = devices.length > 0 && devices.every(d => expandedDevices.includes(d.ip));
+
+  const toggleAll = () => {
+    if (isAllExpanded) {
+      setExpandedDevices([]);
+    } else {
+      setExpandedDevices(devices.map(d => d.ip));
+    }
+  };
+
   const toggleDevice = (ip: string) => {
-    setExpandedDevices((prev) =>
-      prev.includes(ip) ? prev.filter((i) => i !== ip) : [...prev, ip]
+    setExpandedDevices((prev: string[]) =>
+      prev.includes(ip) ? prev.filter((i: string) => i !== ip) : [...prev, ip]
     );
   };
 
@@ -69,13 +79,22 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
             {devices.reduce((acc, d) => acc + d.streams.length, 0)}
           </span>
         </div>
-        <button
-          onClick={onClearOffline}
-          title="Supprimer les flux hors-ligne"
-          className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-all font-sans"
-        >
-          <Trash2 size={14} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={toggleAll}
+            title={isAllExpanded ? "Tout replier" : "Tout déplier"}
+            className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans"
+          >
+            {isAllExpanded ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
+          </button>
+          <button
+            onClick={onClearOffline}
+            title="Supprimer les flux hors-ligne"
+            className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-all font-sans"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-0 space-y-0">

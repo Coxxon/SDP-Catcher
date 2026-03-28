@@ -70,18 +70,37 @@ fn get_mac_from_arp(ip: &str) -> (String, String) {
 
 #[tauri::command]
 fn get_network_interfaces() -> Vec<NetworkInterface> {
-    let mut interfaces = Vec::new();
+    use std::collections::HashMap;
+    let mut interfaces_map: HashMap<String, NetworkInterface> = HashMap::new();
+    
     for iface in netdev::get_interfaces() {
         if iface.is_loopback() { continue; }
+        let name = iface.friendly_name.clone().unwrap_or(iface.name.clone());
+        
         for ipv4 in iface.ipv4 {
-            interfaces.push(NetworkInterface {
-                name: iface.friendly_name.clone().unwrap_or(iface.name.clone()),
-                ip: ipv4.addr.to_string(),
-                mask: ipv4.netmask.to_string(),
-            });
+            let ip = ipv4.addr.to_string();
+            let mask = ipv4.netmask.to_string();
+            
+            let new_iface = NetworkInterface {
+                name: name.clone(),
+                ip: ip.clone(),
+                mask,
+            };
+
+            if let Some(existing) = interfaces_map.get(&name) {
+                // If existing is Zeroconf and new is NOT, replace it
+                if existing.ip.starts_with("169.254") && !ip.starts_with("169.254") {
+                    interfaces_map.insert(name.clone(), new_iface);
+                }
+            } else {
+                interfaces_map.insert(name.clone(), new_iface);
+            }
         }
     }
-    interfaces
+    
+    let mut result: Vec<NetworkInterface> = interfaces_map.into_values().collect();
+    result.sort_by(|a, b| a.name.cmp(&b.name));
+    result
 }
 
 #[tauri::command]
