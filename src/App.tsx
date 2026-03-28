@@ -50,6 +50,10 @@ function App() {
   useEffect(() => {
     activeIpRef.current = activeIp;
   }, [activeIp]);
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${zoomLevel * 100}%`;
+  }, [zoomLevel]);
   const [isSniffing, setIsSniffing] = useState(false);
   const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -338,7 +342,6 @@ function App() {
   return (
     <main 
       className="flex flex-col h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none"
-      style={{ fontSize: `${zoomLevel * 100}%` }}
     >
       {/* Dynamic Workspace Container */}
       <div className="flex flex-1 overflow-x-auto overflow-y-hidden">
