@@ -35,19 +35,19 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 flex-1 min-w-0">
-      <div className="p-4 flex items-center justify-between border-b border-zinc-800">
-        <div className="flex items-center gap-3 min-w-0">
-          <Globe size={16} className="text-zinc-500" />
-          <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400 truncate">SDP Details</h2>
+    <div className="flex flex-col h-full bg-neutral-900 flex-1 min-w-0">
+      <div className="bg-neutral-800 p-3 border-b border-neutral-700 flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <Globe size={14} className="text-neutral-400" />
+          <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight truncate">SDP Details</h2>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleCopy}
             disabled={!sdp}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider
-                     bg-zinc-900 hover:bg-zinc-800 text-zinc-300 transition-all border border-zinc-700
+            className="flex items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-wider
+                     bg-neutral-900 border border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-white transition-all
                      disabled:opacity-20 disabled:cursor-not-allowed"
           >
             {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
@@ -56,8 +56,8 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
           <button
             onClick={handleSave}
             disabled={!sdp}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider
-                     bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-blue-500/10
+            className="flex items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-wider
+                     bg-neutral-700 hover:bg-neutral-600 text-white transition-all
                      disabled:opacity-20 disabled:cursor-not-allowed"
           >
             <Download size={12} />
@@ -66,29 +66,27 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-6 scrollbar-zinc">
+      <div className="flex-1 overflow-auto bg-[#1E1E1E] p-4 font-mono text-sm text-neutral-300">
         {sdp ? (
-          <div className="max-w-3xl mx-auto space-y-4">
-             <div className="flex items-center gap-2 opacity-40">
-               <Activity size={12} className="text-blue-400" />
-               <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-400">{sourceIp}</span>
+          <div className="max-w-none">
+             <div className="flex items-center gap-2 mb-4 opacity-50">
+               <Activity size={12} />
+               <span className="text-[10px] uppercase tracking-widest">{sourceIp}</span>
              </div>
              
-             <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-md overflow-auto shadow-inner">
-               <pre className="font-mono text-xs text-zinc-300 leading-relaxed selection:bg-blue-500/30">
-                  {sdp.split(/\r?\n/).map((line, i) => (
-                    <div key={i} className="flex gap-4 hover:bg-zinc-800/80 -mx-2 px-2 transition-colors">
-                      <span className="w-5 text-right text-zinc-600 select-none font-bold text-[10px]">{i + 1}</span>
-                      <span className="break-all">{line}</span>
-                    </div>
-                  ))}
-               </pre>
-             </div>
+             <pre className="leading-relaxed selection:bg-neutral-700">
+                {sdp.split(/\r?\n/).map((line, i) => (
+                  <div key={i} className="flex gap-4 hover:bg-neutral-800/20 -mx-4 px-4 transition-colors">
+                    <span className="w-5 text-right text-neutral-700 select-none font-bold text-[10px]">{i + 1}</span>
+                    <span className="break-all">{line}</span>
+                  </div>
+                ))}
+             </pre>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-zinc-800 space-y-4">
+          <div className="h-full flex flex-col items-center justify-center text-neutral-800 space-y-4">
              <Activity size={32} className="animate-pulse opacity-20" />
-             <p className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-20">Network Discovery Active</p>
+             <p className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-20">Monitoring Network</p>
           </div>
         )}
       </div>

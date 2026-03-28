@@ -18,57 +18,54 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
   };
 
   return (
-    <div className="flex flex-col h-full bg-zinc-950 border-r border-zinc-800 w-72 lg:w-80 shrink-0">
-      <div className="p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Rss size={16} className="text-zinc-500" />
-          <h2 className="text-xs font-bold uppercase tracking-widest text-zinc-400">Streams</h2>
+    <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-72 lg:w-80 shrink-0">
+      <div className="bg-neutral-800 p-3 border-b border-neutral-700 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Rss size={14} className="text-neutral-400" />
+          <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
         </div>
-        <span className="bg-zinc-900 text-zinc-600 text-[10px] px-1.5 py-0.5 rounded-full font-mono">
+        <span className="bg-neutral-900 text-neutral-600 text-[10px] px-1.5 py-0.5 font-mono">
           {devices.reduce((acc, d) => acc + d.streams.length, 0)}
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      <div className="flex-1 overflow-y-auto p-0 space-y-0">
         {devices.length === 0 ? (
-          <div className="px-4 py-20 text-center text-zinc-600 text-xs italic">
-            Waiting for SAP announcements...
+          <div className="p-4 text-center text-neutral-600 text-xs italic">
+            Scanning...
           </div>
         ) : (
           devices.map((device) => {
             const isExpanded = expandedDevices.includes(device.ip);
             return (
-              <div key={device.ip} className="space-y-1">
+              <div key={device.ip} className="border-b border-neutral-800/50">
                 <button
                   onClick={() => toggleDevice(device.ip)}
-                  className="w-full flex items-center gap-2 p-2 bg-zinc-900/50 border border-zinc-800/50 rounded-md hover:bg-zinc-900 hover:border-zinc-700 transition-all group"
+                  className="w-full flex items-center gap-2 px-3 py-2 bg-neutral-800/30 hover:bg-neutral-800 transition-all group"
                 >
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
-                    <ChevronRight size={14} className="text-zinc-500" />
+                    <ChevronRight size={14} className="text-neutral-600" />
                   </div>
-                  <Monitor size={14} className="text-zinc-500 group-hover:text-zinc-300" />
+                  <Monitor size={14} className="text-neutral-500 group-hover:text-neutral-300" />
                   <div className="flex flex-col items-start leading-none min-w-0">
-                    <span className="text-[11px] font-bold text-zinc-300 truncate w-full uppercase tracking-tight">{device.name}</span>
-                    <span className="text-[9px] text-zinc-600 font-mono italic">{device.ip}</span>
+                    <span className="text-[11px] font-bold text-neutral-200 truncate w-full tracking-tight">{device.name}</span>
+                    <span className="text-[9px] text-neutral-600 font-mono italic">{device.ip}</span>
                   </div>
                 </button>
 
                 {isExpanded && (
-                  <div className="ml-3 space-y-1 border-l border-zinc-800 pl-2 py-1">
+                  <div className="space-y-0">
                     {device.streams.sort((a, b) => a.name.localeCompare(b.name)).map((stream) => (
                       <button
                         key={stream.id}
                         onClick={() => onStreamSelect(stream)}
-                        className={`w-full flex items-center gap-3 py-1.5 px-3 rounded-md text-[12px] transition-all border ${
+                        className={`w-full flex items-center gap-4 py-1.5 px-6 text-[12px] transition-all border-b border-neutral-800/30 ${
                           selectedStreamId === stream.id
-                            ? "bg-blue-900/20 border-blue-500 text-blue-400 font-bold border-l-2"
-                            : "text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 border-transparent"
+                            ? "bg-neutral-700 text-white font-bold"
+                            : "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800"
                         }`}
                       >
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          selectedStreamId === stream.id ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" : "bg-transparent border border-zinc-800"
-                        }`} />
-                        <span className="truncate">{stream.name}</span>
+                        <span className="truncate flex-1 text-left">{stream.name}</span>
                       </button>
                     ))}
                   </div>

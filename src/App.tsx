@@ -114,7 +114,7 @@ function App() {
   };
 
   return (
-    <main className="flex h-screen w-screen bg-zinc-950 text-zinc-300 font-sans antialiased overflow-hidden select-none">
+    <main className="flex h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none">
       <InterfaceList
         activeIp={activeIp}
         onInterfaceSelect={handleInterfaceSelect}
