@@ -260,6 +260,39 @@ fn set_network_ip(interface_name: String, is_dhcp: bool, ip: Option<String>, mas
     }
 }
 
+#[tauri::command]
+fn get_arp_table() -> std::collections::HashMap<String, String> {
+    use std::collections::HashMap;
+    let mut table = HashMap::new();
+    
+    // Inject mock entries for simulator (standard PTP IDs -> IP)
+    // We map 00:11:22:88:88:XX (original MAC part of the EUI-64) to 192.168.1.XX
+    for i in 121..170 {
+        let mac = format!("00:11:22:88:88:{:02X}", i);
+        let ip = format!("192.168.1.{}", i);
+        table.insert(mac, ip);
+    }
+
+    let output = std::process::Command::new("arp")
+        .arg("-a")
+        .output();
+
+    if let Ok(out) = output {
+        let stdout = String::from_utf8_lossy(&out.stdout);
+        for line in stdout.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 2 {
+                let ip = parts[0];
+                let mac = parts[1].replace("-", ":").to_uppercase();
+                if mac.split(':').count() == 6 {
+                    table.insert(mac, ip.to_string());
+                }
+            }
+        }
+    }
+    table
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -270,6 +303,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_network_interfaces, 
+            get_arp_table,
             start_sniffing, 
             stop_sniffing, 
             set_network_ip,

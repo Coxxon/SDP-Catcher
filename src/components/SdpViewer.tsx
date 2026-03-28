@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Copy, Check, Download, Activity, FileText, ChevronUp, ChevronDown } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
+import { invoke } from "@tauri-apps/api/core";
 
 interface SdpViewerProps {
   sdp: string | null;
@@ -11,6 +12,22 @@ interface SdpViewerProps {
 export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   const [copied, setCopied] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
+  const [showIp, setShowIp] = useState(false);
+  const [arpTable, setArpTable] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    invoke<Record<string, string>>("get_arp_table").then(setArpTable);
+  }, []);
+
+  const ptpIdToMac = (ptpId: string) => {
+    // Standard EUI-64 to MAC-48: 00-11-22-FF-FE-33-44-55 -> 00:11:22:33:44:55
+    const norm = ptpId.replace(/:/g, '-');
+    const parts = norm.split('-');
+    if (parts.length === 8) {
+      return [parts[0], parts[1], parts[2], parts[5], parts[6], parts[7]].join(':').toUpperCase();
+    }
+    return ptpId.replace(/-/g, ':').toUpperCase();
+  };
 
   const handleCopy = () => {
     if (sdp) {
@@ -73,6 +90,8 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   };
 
   const streamInfo = parseStreamInfo(sdp);
+  const gmMac = streamInfo?.masterClock ? ptpIdToMac(streamInfo.masterClock) : "";
+  const resolvedIp = arpTable[gmMac];
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 flex-1 min-w-0">
@@ -161,8 +180,12 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
             </div>
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Master Clock</span>
-              <span className="text-[10px] text-neutral-200 font-mono font-bold tracking-tight">
-                {streamInfo?.masterClock}
+              <span 
+                onClick={() => resolvedIp && setShowIp(!showIp)}
+                className={`text-[10px] text-neutral-200 font-mono font-bold tracking-tight ${resolvedIp ? 'cursor-pointer hover:text-white hover:bg-white/5 px-1 rounded transition-all underline decoration-dotted decoration-neutral-600' : ''}`}
+                title={resolvedIp ? "Click to toggle ID/IP" : "MAC not found in ARP table"}
+              >
+                {showIp && resolvedIp ? resolvedIp : streamInfo?.masterClock}
               </span>
             </div>
           </div>
