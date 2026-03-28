@@ -277,7 +277,7 @@ export function InterfaceList({
                   onClick={() => handleClick(iface.ip)}
                   className={`w-full text-left px-3 py-2 transition-all border-b group relative flex flex-col gap-0.5 ${
                     isActive
-                      ? "bg-neutral-700 text-white border-neutral-600"
+                      ? "bg-neutral-800 text-white border-neutral-700"
                       : "text-neutral-400 hover:bg-neutral-800 border-neutral-800/50"
                   } ${isHidden ? "opacity-30" : "opacity-100"} select-none`}
                 >
@@ -293,6 +293,12 @@ export function InterfaceList({
                         )}
                     </div>
                     <div className="flex items-center gap-1.5">
+                      {isActive && (
+                        <Activity 
+                            size={10} 
+                            className={isSniffing ? "text-green-500 animate-pulse" : "text-amber-500"} 
+                        />
+                      )}
                       {!isEditMode && (
                         <div 
                           onClick={(e) => { 
@@ -303,12 +309,6 @@ export function InterfaceList({
                         >
                           <Pencil size={12} />
                         </div>
-                      )}
-                      {isActive && (
-                        <Activity 
-                            size={10} 
-                            className={isSniffing ? "text-green-500 animate-pulse" : "text-amber-500"} 
-                        />
                       )}
                     </div>
                   </div>

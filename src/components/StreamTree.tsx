@@ -29,7 +29,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
           <Rss size={14} className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
         </div>
-        <span className="bg-neutral-600 text-neutral-100 font-bold px-2 py-0.5 rounded-md text-xs">
+        <span className="text-neutral-500 font-bold px-1 py-0.5 text-xs">
           {devices.reduce((acc, d) => acc + d.streams.length, 0)}
         </span>
       </div>
@@ -66,7 +66,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
                         onClick={() => handleStreamClick(stream)}
                         className={`w-full flex flex-col items-start py-2 px-8 text-[12px] transition-all border-b border-neutral-800/30 ${
                           selectedStreamId === stream.id
-                            ? "bg-neutral-700 text-white font-bold"
+                            ? "bg-neutral-800 text-white font-bold"
                             : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800"
                         }`}
                       >

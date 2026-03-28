@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Download, Activity, Globe } from "lucide-react";
+import { Copy, Check, Download, Activity, FileText } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 
@@ -38,7 +38,7 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
     <div className="flex flex-col h-full bg-neutral-900 flex-1 min-w-0">
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
         <div className="flex items-center gap-2 min-w-0">
-          <Globe size={14} className="text-neutral-400" />
+          <FileText size={14} className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight truncate">SDP</h2>
         </div>
 
