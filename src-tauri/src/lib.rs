@@ -112,6 +112,15 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
 }
 
 #[tauri::command]
+fn stop_sniffing(state: State<'_, AppState>) {
+    println!("🛑 Commande Rust reçue : Arrêt du sniffing");
+    let mut stop_flag_lock = state.sniffer_stop_flag.lock().unwrap();
+    if let Some(old_flag) = stop_flag_lock.take() {
+        old_flag.store(true, Ordering::Relaxed);
+    }
+}
+
+#[tauri::command]
 fn set_network_ip(interface_name: String, is_dhcp: bool, ip: Option<String>, mask: Option<String>) -> Result<String, String> {
     println!("🔧 Modification réseau : {} (DHCP: {})", interface_name, is_dhcp);
     
@@ -152,7 +161,7 @@ pub fn run() {
             sniffer_stop_flag: Mutex::new(None),
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_network_interfaces, start_sniffing, set_network_ip])
+        .invoke_handler(tauri::generate_handler![get_network_interfaces, start_sniffing, stop_sniffing, set_network_ip])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

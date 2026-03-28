@@ -63,6 +63,13 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
   const handleApply = async (iface: InterfaceInfo) => {
     setIsPending(true);
     try {
+      // 1. Stop sniffing first to release the socket and prevent Windows driver deadlock
+      await invoke("stop_sniffing");
+      
+      // 2. Safety delay (requested)
+      await new Promise((r) => setTimeout(r, 1000));
+
+      // 3. Apply the new IP
       const result = await invoke("set_network_ip", {
         interfaceName: iface.name,
         isDhcp: editForm.isDhcp,
@@ -70,8 +77,13 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
         mask: editForm.isDhcp ? null : editForm.mask
       });
       console.log(result);
+      
+      // 4. Reset selection in UI and close edit mode
+      onInterfaceSelect(""); // Force the user to re-select
       setEditingIp(null);
-      setTimeout(refreshInterfaces, 2000); // Wait for Windows to update
+      
+      // 5. Refresh interfaces after Windows updates
+      setTimeout(refreshInterfaces, 2000); 
     } catch (err: any) {
       alert(`Erreur: ${err}`);
       console.error(err);

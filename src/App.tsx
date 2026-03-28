@@ -123,8 +123,15 @@ function App() {
   const handleInterfaceSelect = async (ip: string) => {
     if (ip === activeIp) return;
     
-    setActiveIp(ip);
+    // Clear current state and stop sniffing
+    setActiveIp(ip || null);
     setDevices([]);
+    
+    // Always stop previous if it was active
+    await invoke("stop_sniffing");
+
+    if (!ip) return;
+
     try {
       await invoke("start_sniffing", { interfaceIp: ip });
     } catch (err) {
