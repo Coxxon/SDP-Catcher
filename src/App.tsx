@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { InterfaceList } from "./components/InterfaceList";
 import { StreamTree } from "./components/StreamTree";
 import { SdpViewer } from "./components/SdpViewer";
+import { ptpIdToMac } from "./utils/network";
 
 export interface Stream {
   id: string;
@@ -49,6 +50,8 @@ function App() {
   const [masterClocks, setMasterClocks] = useState<{name: string, ip: string}[]>([]);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
   const [unknownTimeout, setUnknownTimeout] = useState(60);
+  const [footerDisplayMode, setFooterDisplayMode] = useState<'auto' | 'name' | 'ip' | 'mac'>('auto');
+  const [lastPtpInfo, setLastPtpInfo] = useState({ ptp_id: '---', name: '---', ip: '---' });
 
   const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string; sessionInfo: string | null } => {
     const lines = raw.split(/\r?\n/);
@@ -110,7 +113,7 @@ function App() {
   }, [interfaces]);
 
   useEffect(() => {
-    const unlisten = listen<SdpDiscoveredEvent>("sdp-discovered", (event) => {
+    const unlistenSdp = listen<SdpDiscoveredEvent>("sdp-discovered", (event) => {
       const { sdp_content, mac, manufacturer, sap_timeout_ms } = event.payload;
       const { name, multicastIp, originIp, sessionInfo } = parseSdp(sdp_content);
 
@@ -183,19 +186,55 @@ function App() {
       });
     });
 
-    const unlistenPtp = listen<{name: string, ip: string}>("ptp-clock-update", (event) => {
-      setMasterClocks(prev => {
-          const exists = prev.find(c => c.ip === event.payload.ip);
-          if (exists) return prev;
-          return [...prev, event.payload];
-      });
+    const unlistenPtp = listen<{ptp_id: string, name: string, ip: string}>("ptp-clock-update", (event) => {
+      setLastPtpInfo(event.payload);
+      const { name, ip } = event.payload;
+      if (name !== '---') {
+        setMasterClocks([{ name, ip }]);
+      }
     });
 
     return () => {
-        unlisten.then((f) => f());
-        unlistenPtp.then((f) => f());
+      unlistenSdp.then(f => (f as () => void)());
+      unlistenPtp.then(f => (f as () => void)());
     };
   }, []);
+
+  const cycleFooterDisplayMode = () => {
+    const hasName = lastPtpInfo.name && lastPtpInfo.name !== '---';
+    const hasIp = lastPtpInfo.ip && lastPtpInfo.ip !== '---';
+    
+    if (footerDisplayMode === 'auto') {
+      if (hasIp) setFooterDisplayMode('ip');
+      else setFooterDisplayMode('mac');
+    } else if (footerDisplayMode === 'ip') {
+      setFooterDisplayMode('mac');
+    } else if (footerDisplayMode === 'mac') {
+      if (hasName) setFooterDisplayMode('name');
+      else if (hasIp) setFooterDisplayMode('ip');
+      else setFooterDisplayMode('auto');
+    } else if (footerDisplayMode === 'name') {
+        setFooterDisplayMode('auto');
+    }
+  };
+
+  const getFooterGmcText = () => {
+    if (lastPtpInfo.ptp_id === '---') return "Searching...";
+    
+    const hasName = lastPtpInfo.name && lastPtpInfo.name !== '---';
+    const hasIp = lastPtpInfo.ip && lastPtpInfo.ip !== '---';
+    const mac = ptpIdToMac(lastPtpInfo.ptp_id);
+
+    if (footerDisplayMode === 'auto') {
+      if (hasName) return lastPtpInfo.name;
+      if (hasIp) return lastPtpInfo.ip;
+      return mac;
+    }
+    if (footerDisplayMode === 'name') return hasName ? lastPtpInfo.name : mac;
+    if (footerDisplayMode === 'ip') return hasIp ? lastPtpInfo.ip : mac;
+    if (footerDisplayMode === 'mac') return mac;
+    return mac;
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -290,6 +329,18 @@ function App() {
                     {activeClock ? `${activeClock.name} (${activeClock.ip})` : '--'}
                 </span>
             </span>
+        </div>
+
+        {/* GMC Footer */}
+        <div className="flex items-center gap-2 text-[10px] font-bold">
+          <span className="text-neutral-500 uppercase tracking-widest">GMC:</span>
+          <span 
+            onClick={cycleFooterDisplayMode}
+            className="text-neutral-300 hover:text-white cursor-pointer underline decoration-dotted decoration-neutral-600 transition-colors"
+            title={`Mode: ${footerDisplayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)`}
+          >
+            {getFooterGmcText()}
+          </span>
         </div>
 
         <div className="flex items-center gap-3 ml-auto">

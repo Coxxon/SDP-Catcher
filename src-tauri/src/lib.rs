@@ -32,6 +32,7 @@ struct SdpPayload {
 
 #[derive(Serialize, Clone)]
 struct PtpPayload {
+    ptp_id: String,
     name: String,
     ip: String,
 }
@@ -253,29 +254,20 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                             }
                         }
 
-                        // Resolve Best Identifier for Footer (Name > IP > PTP ID)
-                        let display_name = {
+                        // Send raw metadata for Frontend-side resolution
+                        let name = {
                             if let Some(info) = table.get(&ptp_id) {
-                                if !info.name.is_empty() && info.name != "---" {
-                                    info.name.clone()
-                                } else if !info.ip.is_empty() {
-                                    info.ip.clone()
-                                } else {
-                                    ptp_id.clone()
-                                }
+                                info.name.clone()
                             } else if let Some(info) = table.get(&source_ip) {
-                                if !info.name.is_empty() && info.name != "---" {
-                                    info.name.clone()
-                                } else {
-                                    source_ip.clone()
-                                }
+                                info.name.clone()
                             } else {
-                                ptp_id.clone()
+                                "---".to_string()
                             }
                         };
 
                         app_ptp.emit("ptp-clock-update", PtpPayload {
-                            name: display_name,
+                            ptp_id: ptp_id.clone(),
+                            name,
                             ip: source_ip.clone(),
                         }).ok();
                     }

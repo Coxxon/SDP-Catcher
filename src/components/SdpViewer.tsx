@@ -4,6 +4,7 @@ import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { ptpIdToMac } from "../utils/network";
 
 interface SdpViewerProps {
   sdp: string | null;
@@ -37,14 +38,6 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
     setDisplayMode('auto');
   }, [sdp]);
 
-  const ptpIdToMac = (ptpId: string) => {
-    const norm = ptpId.replace(/:/g, '-');
-    const parts = norm.split('-');
-    if (parts.length === 8) {
-      return [parts[0], parts[1], parts[2], parts[5], parts[6], parts[7]].join(':').toUpperCase();
-    }
-    return ptpId.replace(/-/g, ':').toUpperCase();
-  };
 
   const handleCopy = () => {
     if (sdp) {
@@ -107,7 +100,6 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   const streamInfo = parseStreamInfo(sdp);
   const gmId = streamInfo?.masterClock || "";
   const gmMac = gmId ? ptpIdToMac(gmId) : "";
-  const resolvedIp = sourceIp;
   
   // Exhaustive lookup for simulated or real environments
   const resolved = arpTable[gmId] || arpTable[gmMac] || (sourceIp ? arpTable[sourceIp] : undefined);
