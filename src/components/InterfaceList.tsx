@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Network, Activity } from "lucide-react";
+import { Network, Activity, Settings } from "lucide-react";
 
 interface InterfaceInfo {
   name: string;
@@ -19,6 +19,11 @@ const maskToCidr = (mask: string): number => {
 
 export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProps) {
   const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [hiddenInterfaces, setHiddenInterfaces] = useState<string[]>(() => {
+    const saved = localStorage.getItem("hiddenInterfaces");
+    return saved ? JSON.parse(saved) : [];
+  });
 
   useEffect(() => {
     invoke<InterfaceInfo[]>("get_network_interfaces")
@@ -26,9 +31,19 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
       .catch(console.error);
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem("hiddenInterfaces", JSON.stringify(hiddenInterfaces));
+  }, [hiddenInterfaces]);
+
   const handleClick = (ip: string) => {
-    console.log("Interface sélectionnée :", ip);
-    onInterfaceSelect(ip);
+    if (isEditMode) {
+      setHiddenInterfaces((prev) =>
+        prev.includes(ip) ? prev.filter((i) => i !== ip) : [...prev, ip]
+      );
+    } else {
+      console.log("Interface sélectionnée :", ip);
+      onInterfaceSelect(ip);
+    }
   };
 
   return (
@@ -38,6 +53,14 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
           <Network size={14} className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Interfaces</h2>
         </div>
+        <button
+          onClick={() => setIsEditMode(!isEditMode)}
+          className={`p-1.5 rounded-md hover:bg-neutral-700 transition-all ${
+            isEditMode ? "text-blue-400 bg-neutral-700" : "text-neutral-500"
+          }`}
+        >
+          <Settings size={14} />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -46,31 +69,35 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
             Scanning...
           </div>
         ) : (
-          interfaces.map((iface) => {
-            const isActive = activeIp === iface.ip;
-            const cidr = maskToCidr(iface.mask);
-            return (
-              <button
-                key={iface.ip}
-                onClick={() => handleClick(iface.ip)}
-                className={`w-full text-left px-3 py-2 transition-all border-b border-neutral-800/50 flex flex-col gap-0.5 ${
-                  isActive
-                    ? "bg-neutral-700 text-white"
-                    : "text-neutral-400 hover:bg-neutral-800"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'}`}>
-                    {iface.name}
-                  </span>
-                  {isActive && <Activity size={10} className="text-blue-400 animate-pulse" />}
-                </div>
-                <div className="text-xs text-zinc-500 font-mono flex gap-2">
-                  <span>{iface.ip} <span className="opacity-60">/{cidr}</span></span>
-                </div>
-              </button>
-            );
-          })
+          interfaces
+            .filter((iface) => isEditMode || !hiddenInterfaces.includes(iface.ip))
+            .map((iface) => {
+              const isActive = activeIp === iface.ip;
+              const isHidden = hiddenInterfaces.includes(iface.ip);
+              const cidr = maskToCidr(iface.mask);
+              
+              return (
+                <button
+                  key={iface.ip}
+                  onClick={() => handleClick(iface.ip)}
+                  className={`w-full text-left px-3 py-2 transition-all border-b border-neutral-800/50 flex flex-col gap-0.5 ${
+                    isActive
+                      ? "bg-neutral-700 text-white"
+                      : "text-neutral-400 hover:bg-neutral-800"
+                  } ${isHidden ? "opacity-30" : "opacity-100"}`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
+                      {iface.name}
+                    </span>
+                    {isActive && <Activity size={10} className="text-blue-400 animate-pulse" />}
+                  </div>
+                  <div className="text-xs text-zinc-500 font-mono flex gap-2">
+                    <span>{iface.ip} <span className="opacity-60">/{cidr}</span></span>
+                  </div>
+                </button>
+              );
+            })
         )}
       </div>
     </div>

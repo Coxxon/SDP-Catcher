@@ -121,6 +121,8 @@ function App() {
   }, []);
 
   const handleInterfaceSelect = async (ip: string) => {
+    if (ip === activeIp) return;
+    
     setActiveIp(ip);
     setDevices([]);
     try {
