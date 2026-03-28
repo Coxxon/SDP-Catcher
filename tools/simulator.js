@@ -71,7 +71,14 @@ const devices = manufacturers.map(m => {
   };
 });
 
+const generatePtpId = (ip) => {
+  const parts = ip.split('.');
+  const last = parseInt(parts[3]).toString(16).padStart(2, '0').toUpperCase();
+  return `00-11-22-FF-FE-88-88-${last}`;
+};
+
 const generatePayload = (deviceName, deviceIp, streamName, multicastIp) => {
+  const ptpId = generatePtpId(deviceIp);
   return Buffer.from(
     'SAP_HEADER_MOCK\n' +
     'v=0\n' +
@@ -83,7 +90,7 @@ const generatePayload = (deviceName, deviceIp, streamName, multicastIp) => {
     'm=audio 5004 RTP/AVP 97\n' +
     'a=rtpmap:97 L24/48000/2\n' +
     'a=ptime:1\n' +
-    'a=ts-refclk:ptp=IEEE1588-2008:00-11-22-FF-FE-33-44-55:0\n' +
+    `a=ts-refclk:ptp=IEEE1588-2008:${ptpId}:0\n` +
     'a=recvonly'
   );
 };
