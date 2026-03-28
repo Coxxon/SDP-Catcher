@@ -1,4 +1,4 @@
-const dgram = require('dgram');
+import dgram from 'node:dgram';
 
 const MULTICAST_ADDR = '239.255.255.255';
 const PORT = 9875;
