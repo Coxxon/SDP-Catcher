@@ -52,6 +52,8 @@ function App() {
   const [unknownTimeout, setUnknownTimeout] = useState(60);
   const [footerDisplayMode, setFooterDisplayMode] = useState<'auto' | 'name' | 'ip' | 'mac'>('auto');
   const [lastPtpInfo, setLastPtpInfo] = useState({ ptp_id: '---', name: '---', ip: '---' });
+  const [lastPtpUpdate, setLastPtpUpdate] = useState(0);
+  const [isPtpActive, setIsPtpActive] = useState(false);
 
   const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string; sessionInfo: string | null } => {
     const lines = raw.split(/\r?\n/);
@@ -188,6 +190,8 @@ function App() {
 
     const unlistenPtp = listen<{ptp_id: string, name: string, ip: string}>("ptp-clock-update", (event) => {
       setLastPtpInfo(event.payload);
+      setLastPtpUpdate(Date.now());
+      setIsPtpActive(true);
       const { name, ip } = event.payload;
       if (name !== '---') {
         setMasterClocks([{ name, ip }]);
@@ -235,6 +239,16 @@ function App() {
     if (footerDisplayMode === 'mac') return mac;
     return mac;
   };
+
+  // Monitor Heartbeat
+  useEffect(() => {
+    const monitor = setInterval(() => {
+      if (Date.now() - lastPtpUpdate > 3000) {
+        setIsPtpActive(false);
+      }
+    }, 1000);
+    return () => clearInterval(monitor);
+  }, [lastPtpUpdate]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -333,13 +347,15 @@ function App() {
 
         {/* GMC Footer */}
         <div className="flex items-center gap-2 text-[10px] font-bold">
-          <span className="text-neutral-500 uppercase tracking-widest">GMC:</span>
+          <div className={`w-1.5 h-1.5 rounded-full transition-all duration-500 
+                          ${isPtpActive ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`} />
+          <span className="text-neutral-500 uppercase tracking-widest">PTPV2 GMC:</span>
           <span 
-            onClick={cycleFooterDisplayMode}
-            className="text-neutral-300 hover:text-white cursor-pointer underline decoration-dotted decoration-neutral-600 transition-colors"
-            title={`Mode: ${footerDisplayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)`}
+            onClick={isPtpActive ? cycleFooterDisplayMode : undefined}
+            className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer underline decoration-dotted decoration-neutral-600' : 'text-neutral-600 italic cursor-not-allowed'}`}
+            title={isPtpActive ? `Mode: ${footerDisplayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)` : "PTP Clock Offline"}
           >
-            {getFooterGmcText()}
+            {isPtpActive ? getFooterGmcText() : "Disconnected"}
           </span>
         </div>
 
