@@ -169,16 +169,30 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
         while !stop_flag.load(Ordering::Relaxed) {
             if let Ok((size, src)) = sap_socket.recv_from(&mut buf) {
                 let payload = &buf[..size];
+                // Localise le début du SDP (v=0)
                 if let Some(pos) = payload.windows(3).position(|w| w == b"v=0") {
                     if let Ok(sdp_content) = std::str::from_utf8(&payload[pos..]) {
-                        let source_ip = src.ip().to_string();
-                        let (mac, _oui) = get_mac_from_arp(&source_ip);
+                        
+                        // On extrait l'IP d'origine spécifiée dans le SDP (o=...)
+                        // car en simulation locale, l'IP UDP source est toujours 127.0.0.1 ou l'IP du PC.
+                        let mut origin_ip = src.ip().to_string();
+                        for line in sdp_content.lines() {
+                            if line.startsWith("o=") {
+                                let parts: Vec<&str> = line.split_whitespace().collect();
+                                if parts.len() >= 6 {
+                                    origin_ip = parts[5].to_string();
+                                    break;
+                                }
+                            }
+                        }
+
+                        let (mac, _oui) = get_mac_from_arp(&origin_ip);
                         let mfr_enum = identify_manufacturer(&mac);
                         let mfr_name = mfr_enum.to_string();
                         let timeout = mfr_enum.default_timeout_ms(default_unknown_timeout_s);
 
                         app.emit("sdp-discovered", SdpPayload {
-                            source_ip,
+                            source_ip: origin_ip, // On utilise l'IP simulée pour la UI également
                             sdp_content: sdp_content.to_string(),
                             mac,
                             manufacturer: mfr_name,

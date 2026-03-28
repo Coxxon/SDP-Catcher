@@ -10,7 +10,7 @@ const server = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 const devices = [
   {
     name: "Riedel_Bolero",
-    ip: "192.168.1.10",
+    ip: "192.168.1.11",
     interval: 5000,
     streams: [
       { name: "Bolero_Beltpacks", multicast: "239.69.10.1" },
@@ -18,15 +18,15 @@ const devices = [
   },
   {
     name: "Yamaha_CL5",
-    ip: "192.168.1.20",
-    interval: 30000,
+    ip: "192.168.1.12",
+    interval: 15000, // Ajusté à 15s pour tests réactifs
     streams: [
       { name: "FOH_Matrix_1-2", multicast: "239.69.20.1" },
     ]
   },
   {
     name: "Merging_Horus",
-    ip: "192.168.1.30",
+    ip: "192.168.1.13",
     interval: 30000,
     streams: [
       { name: "Mic_Preamp_1-8", multicast: "239.69.30.1" },
@@ -34,7 +34,7 @@ const devices = [
   },
   {
     name: "Dante_AVIO",
-    ip: "192.168.1.40",
+    ip: "192.168.1.14",
     interval: 30000,
     streams: [
       { name: "Analog_Output", multicast: "239.69.40.1" },
@@ -76,7 +76,7 @@ server.on('listening', () => {
                 if (err) console.error(`Error sending ${stream.name}:`, err);
             });
         });
-        console.log(`[${new Date().toLocaleTimeString()}] Sent ${device.name} SAP heartbeats (${device.interval}ms)`);
+        console.log(`[${new Date().toLocaleTimeString()}] Sent ${device.name} SAP heartbeats (${device.ip}) @ ${device.interval}ms`);
     }, device.interval);
   });
 
