@@ -282,18 +282,18 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                 }
 
                                 let mut table = discovery_ptp.lock().unwrap();
-                                let name = if let Some(info) = table.get(&ptp_id) {
-                                    info.name.clone()
+                                let (name, final_ip) = if let Some(info) = table.get(&ptp_id) {
+                                    (info.name.clone(), info.ip.clone())
                                 } else if let Some(info) = table.get(&source_ip) {
-                                    info.name.clone()
+                                    (info.name.clone(), info.ip.clone())
                                 } else {
-                                    "---".to_string()
+                                    ("---".to_string(), source_ip.clone())
                                 };
 
                                 app_ptp.emit("ptp-clock-update", PtpPayload {
                                     ptp_id,
                                     name,
-                                    ip: source_ip,
+                                    ip: final_ip,
                                     interface_ip: matched_interface,
                                 }).ok();
                             }
@@ -315,6 +315,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                         let mut origin_ip = src.ip().to_string();
                         let mut sap_name = "---".to_string();
                         let mut stream_name = "---".to_string();
+                        let mut ptp_id_from_sdp = String::new();
 
                         for line in sdp_content.lines() {
                             if line.starts_with("o=") {
@@ -326,6 +327,11 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                 stream_name = line[2..].trim().to_string();
                             } else if line.starts_with("i=") {
                                 sap_name = line[2..].trim().to_string();
+                            } else if line.starts_with("a=ts-refclk:ptp=IEEE1588-2008:") {
+                                let parts: Vec<&str> = line.split(':').collect();
+                                if parts.len() >= 3 {
+                                    ptp_id_from_sdp = parts[2].to_uppercase();
+                                }
                             }
                         }
 
@@ -356,6 +362,15 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                 app.emit("discovery-update", (key.clone(), entry.clone()))
                                     .ok();
                             }
+                        }
+
+                        if !ptp_id_from_sdp.is_empty() {
+                            let mut table = discovery_sap.lock().unwrap();
+                            table.insert(ptp_id_from_sdp.clone(), DeviceInfo {
+                                ip: origin_ip.clone(),
+                                name: best_name.clone(),
+                            });
+                            app.emit("discovery-update", (ptp_id_from_sdp.clone(), DeviceInfo { ip: origin_ip.clone(), name: best_name.clone() })).ok();
                         }
 
                         let mfr_enum = identify_manufacturer(&mac);

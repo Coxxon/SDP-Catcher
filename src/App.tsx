@@ -44,6 +44,11 @@ const ipToLong = (ip: string) => ip.split('.').reduce((acc, octet) => (acc << 8)
 
 function App() {
   const [activeIp, setActiveIp] = useState<string | null>(null);
+  const activeIpRef = useRef(activeIp);
+
+  useEffect(() => {
+    activeIpRef.current = activeIp;
+  }, [activeIp]);
   const [isSniffing, setIsSniffing] = useState(false);
   const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
@@ -202,9 +207,10 @@ function App() {
       const { ptp_id, interface_ip } = event.payload;
       
       // Flexible IP Isolation (remove mask if present)
-      const selectedIp = activeIp?.split("/")[0] || "";
+      const selectedIp = activeIpRef.current?.split("/")[0] || "";
 
       if (interface_ip !== selectedIp) return;
+
 
       console.log("✅ GMC MATCH: ", interface_ip);
 
