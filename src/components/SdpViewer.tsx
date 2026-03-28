@@ -142,8 +142,8 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   }, [sdp, sourceIp]);
 
   return (
-    <div className="flex flex-col h-full bg-neutral-900 flex-1 min-w-[31.25rem]">
-      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3 shrink-0">
+    <div className="flex flex-col h-full bg-neutral-900 flex-1 min-w-[31.25rem] overflow-hidden">
+      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between w-full shrink-0 px-3">
         <div className="flex items-center gap-2 min-w-0">
           <FileText size={14} className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight truncate">SDP</h2>
@@ -181,11 +181,11 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
                <span className="text-[10px] uppercase tracking-widest">{sourceIp}</span>
              </div>
              
-             <pre className="leading-relaxed selection:bg-neutral-700 overflow-visible whitespace-pre-wrap">
+             <pre className="leading-relaxed selection:bg-neutral-700 overflow-visible whitespace-pre">
                 {sdp.split(/\r?\n/).map((line, i) => (
                   <div key={i} className="flex gap-4 hover:bg-neutral-800/10 -mx-4 px-4 transition-colors">
-                    <span className="w-5 text-right text-neutral-700 select-none font-bold text-[10px] leading-tight">{i + 1}</span>
-                    <span className="break-all">{line}</span>
+                    <span className="w-5 shrink-0 text-right text-neutral-700 select-none font-bold text-[10px] leading-tight flex items-center">{i + 1}</span>
+                    <span className="whitespace-nowrap">{line}</span>
                   </div>
                 ))}
              </pre>
