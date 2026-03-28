@@ -19,13 +19,43 @@ const maskToCidr = (mask: string): number => {
   return mask.split('.').reduce((acc, octet) => acc + (Number(octet).toString(2).match(/1/g) || []).length, 0);
 };
 
-const calculateDefaultMask = (ip: string): string => {
-  const firstOctet = parseInt(ip.split('.')[0]);
-  if (isNaN(firstOctet)) return '';
-  if (firstOctet >= 1 && firstOctet <= 127) return '255.0.0.0';
-  if (firstOctet >= 128 && firstOctet <= 191) return '255.255.0.0';
-  if (firstOctet >= 192 && firstOctet <= 223) return '255.255.255.0';
-  return '255.255.255.0';
+const formatIpInput = (value: string, oldValue: string): string => {
+  // Allow only numbers and dots
+  const clean = value.replace(/[^0-9.]/g, '');
+  const parts = clean.split('.');
+  
+  // Max 4 octets
+  if (parts.length > 4) return oldValue;
+
+  const isDeleting = value.length < oldValue.length;
+
+  let newParts = [];
+  for (let i = 0; i < parts.length; i++) {
+    let part = parts[i];
+
+    // Rule 1: Max 255
+    if (part !== '' && parseInt(part) > 255) return oldValue;
+
+    // Rule 4: Zero initial
+    if (part.length > 1 && part[0] === '0') return oldValue;
+
+    newParts.push(part);
+
+    // Auto-dot rules (only when typing)
+    if (!isDeleting && i < 3 && i === parts.length - 1) {
+      if (part.length === 3 || (part === '0' && value.endsWith('0'))) {
+        newParts.push('');
+      }
+    }
+  }
+
+  // Join and prevent trailing dot if we just deleted one
+  let result = newParts.join('.');
+  if (isDeleting && oldValue.endsWith('.') && value === oldValue.slice(0, -1)) {
+      return value;
+  }
+  
+  return result;
 };
 
 const validateIpOrMask = (value: string): boolean => {
@@ -216,28 +246,19 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
                                         type="text" 
                                         value={editForm.ip}
                                         onChange={e => {
-                                            setEditForm({...editForm, ip: e.target.value});
+                                            const formatted = formatIpInput(e.target.value, editForm.ip);
+                                            setEditForm({...editForm, ip: formatted});
                                             if (fieldErrors.ip) setFieldErrors({...fieldErrors, ip: false});
-                                        }}
-                                        onBlur={() => {
-                                            if (!editForm.mask && editForm.ip) {
-                                                setEditForm(prev => ({...prev, mask: calculateDefaultMask(prev.ip)}));
-                                            }
                                         }}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
                                                 e.preventDefault();
                                                 e.stopPropagation();
-                                                if (!editForm.mask) {
-                                                    const autoMask = calculateDefaultMask(editForm.ip);
-                                                    setEditForm(prev => ({...prev, mask: autoMask}));
-                                                    handleApply({...iface, mask: autoMask});
-                                                } else {
-                                                    handleApply(iface);
-                                                }
+                                                handleApply(iface);
                                             }
                                         }}
-                                        className={`w-full bg-neutral-900 border ${fieldErrors.ip ? 'border-red-500' : 'border-neutral-700'} rounded px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500/50`}
+                                        placeholder="0.0.0.0"
+                                        className={`w-full bg-neutral-900 border ${fieldErrors.ip ? 'border-red-500' : 'border-neutral-700'} rounded px-2 py-1 text-xs text-neutral-200 font-mono focus:outline-none focus:border-blue-500/50`}
                                     />
                                 </div>
                                 <div className="space-y-1">
@@ -246,7 +267,8 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
                                         type="text" 
                                         value={editForm.mask}
                                         onChange={e => {
-                                            setEditForm({...editForm, mask: e.target.value});
+                                            const formatted = formatIpInput(e.target.value, editForm.mask);
+                                            setEditForm({...editForm, mask: formatted});
                                             if (fieldErrors.mask) setFieldErrors({...fieldErrors, mask: false});
                                         }}
                                         onKeyDown={(e) => {
@@ -256,7 +278,8 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
                                                 handleApply(iface);
                                             }
                                         }}
-                                        className={`w-full bg-neutral-900 border ${fieldErrors.mask ? 'border-red-500' : 'border-neutral-700'} rounded px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500/50`}
+                                        placeholder="255.255.255.0"
+                                        className={`w-full bg-neutral-900 border ${fieldErrors.mask ? 'border-red-500' : 'border-neutral-700'} rounded px-2 py-1 text-xs text-neutral-200 font-mono focus:outline-none focus:border-blue-500/50`}
                                     />
                                 </div>
                             </div>
