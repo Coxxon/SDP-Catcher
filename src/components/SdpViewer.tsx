@@ -12,12 +12,17 @@ interface SdpViewerProps {
 export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   const [copied, setCopied] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
-  const [displayMode, setDisplayMode] = useState<'ptp' | 'mac' | 'ip' | 'name'>('ptp');
+  const [displayMode, setDisplayMode] = useState<'auto' | 'mac' | 'ip' | 'name'>('auto');
   const [arpTable, setArpTable] = useState<Record<string, { ip: string; name: string }>>({});
 
   useEffect(() => {
     invoke<Record<string, { ip: string; name: string }>>("get_arp_table").then(setArpTable);
   }, []);
+
+  useEffect(() => {
+    // Reset to auto when SDP changes
+    setDisplayMode('auto');
+  }, [sdp]);
 
   const ptpIdToMac = (ptpId: string) => {
     const norm = ptpId.replace(/:/g, '-');
@@ -90,34 +95,36 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   const gmMac = streamInfo?.masterClock ? ptpIdToMac(streamInfo.masterClock) : "";
   const resolved = arpTable[gmMac];
 
-  const cycleDisplayMode = () => {
-    const modes: ('ptp' | 'mac' | 'ip' | 'name')[] = ['ptp', 'mac', 'ip', 'name'];
-    let nextIndex = (modes.indexOf(displayMode) + 1) % modes.length;
-    
-    // Skip IP if not found
-    if (modes[nextIndex] === 'ip' && !resolved?.ip) {
-      nextIndex = (nextIndex + 1) % modes.length;
-    }
-    // Skip Name if not found or placeholder
-    if (modes[nextIndex] === 'name' && (!resolved?.name || resolved?.name === '---')) {
-      nextIndex = (nextIndex + 1) % modes.length;
-    }
-    // Secondary check if we jumped to IP again
-    if (modes[nextIndex] === 'ip' && !resolved?.ip) {
-       nextIndex = 0;
-    }
+  // Logic for display: Name > IP > MAC
+  const hasName = resolved?.name && resolved.name !== "---";
+  const hasIp = !!resolved?.ip;
 
-    setDisplayMode(modes[nextIndex]);
+  const cycleDisplayMode = () => {
+    if (!hasIp && !hasName) return; // Only MAC available, no toggle
+
+    if (displayMode === 'auto') {
+      // First click: from best auto to next best or MAC
+      if (hasName) setDisplayMode('ip');
+      else setDisplayMode('mac');
+    } else if (displayMode === 'ip') {
+      setDisplayMode('mac');
+    } else if (displayMode === 'mac') {
+      if (hasName) setDisplayMode('name');
+      else if (hasIp) setDisplayMode('ip');
+    } else if (displayMode === 'name') {
+      setDisplayMode('ip');
+    }
   };
 
   const getDisplayText = () => {
-    switch (displayMode) {
-      case 'ptp': return streamInfo?.masterClock;
-      case 'mac': return gmMac;
-      case 'ip': return resolved?.ip;
-      case 'name': return resolved?.name;
-      default: return streamInfo?.masterClock;
+    if (displayMode === 'auto') {
+      if (hasName) return resolved.name;
+      if (hasIp) return resolved.ip;
+      return gmMac;
     }
+    if (displayMode === 'name') return resolved?.name || gmMac;
+    if (displayMode === 'ip') return resolved?.ip || gmMac;
+    return gmMac;
   };
 
   return (
@@ -209,8 +216,8 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
               <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Master Clock</span>
               <span 
                 onClick={cycleDisplayMode}
-                className="text-[10px] text-neutral-200 font-mono font-bold tracking-tight cursor-pointer hover:text-white hover:bg-white/5 px-1 rounded transition-all underline decoration-dotted decoration-neutral-600"
-                title={`Mode: ${displayMode.toUpperCase()} | Click to cycle (ID/MAC/IP/Name)`}
+                className={`text-[10px] text-neutral-200 font-mono font-bold tracking-tight px-1 rounded transition-all underline decoration-dotted decoration-neutral-600 ${hasIp || hasName ? 'cursor-pointer hover:text-white hover:bg-white/5' : ''}`}
+                title={hasIp || hasName ? `Current: ${displayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)` : "No other info available for this MAC"}
               >
                 {getDisplayText()}
               </span>
