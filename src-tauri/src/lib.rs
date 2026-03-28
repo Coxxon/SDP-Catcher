@@ -111,6 +111,38 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
     });
 }
 
+#[tauri::command]
+fn set_network_ip(interface_name: String, is_dhcp: bool, ip: Option<String>, mask: Option<String>) -> Result<String, String> {
+    println!("🔧 Modification réseau : {} (DHCP: {})", interface_name, is_dhcp);
+    
+    let mut cmd = std::process::Command::new("netsh");
+    cmd.arg("interface").arg("ip").arg("set").arg("address");
+    cmd.arg(format!("name=\"{}\"", interface_name));
+
+    if is_dhcp {
+        cmd.arg("source=dhcp");
+    } else {
+        if let (Some(ip_addr), Some(mask_addr)) = (ip, mask) {
+            cmd.arg("static").arg(ip_addr).arg(mask_addr);
+        } else {
+            return Err("IP and Mask are required for static configuration".to_string());
+        }
+    }
+
+    match cmd.output() {
+        Ok(output) => {
+            if output.status.success() {
+                Ok("Configuration appliquée avec succès".to_string())
+            } else {
+                let err = String::from_utf8_lossy(&output.stderr).to_string();
+                let out = String::from_utf8_lossy(&output.stdout).to_string();
+                Err(format!("Erreur netsh : {} {}", err, out))
+            }
+        }
+        Err(e) => Err(format!("Échec de l'exécution de netsh : {}", e)),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -120,7 +152,7 @@ pub fn run() {
             sniffer_stop_flag: Mutex::new(None),
         })
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_network_interfaces, start_sniffing])
+        .invoke_handler(tauri::generate_handler![get_network_interfaces, start_sniffing, set_network_ip])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
