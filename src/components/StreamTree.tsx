@@ -143,7 +143,6 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                         <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Manufacturer</span>
                         <span className={`text-[10px] ${device.manufacturer === 'Unknown' ? 'text-neutral-600 italic' : 'text-neutral-200 font-bold'}`}>
                           {device.manufacturer.split(' (')[0]}
-                          {device.mac !== 'Unknown' && ` (${device.mac.split(':').slice(0, 3).join(':')})`}
                           {device.manufacturer === 'Unknown' && ' (fallback)'}
                         </span>
                       </div>
