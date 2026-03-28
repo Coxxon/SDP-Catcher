@@ -179,7 +179,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
 
                   {/* Background Ghost Logo */}
                   {manufacturerLogos[device.manufacturer] && (
-                    <div className="absolute top-0 right-0 h-full w-20 opacity-[0.10] text-neutral-600 pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden">
+                    <div className="absolute top-0 right-0 h-full w-30 opacity-[0.20] text-neutral-600 pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden">
                       {manufacturerLogos[device.manufacturer]}
                     </div>
                   )}
