@@ -36,10 +36,10 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 flex-1 min-w-0">
-      <div className="bg-neutral-800 p-3 border-b border-neutral-700 flex items-center justify-between">
+      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
         <div className="flex items-center gap-2 min-w-0">
           <Globe size={14} className="text-neutral-400" />
-          <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight truncate">SDP Details</h2>
+          <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight truncate">SDP</h2>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">

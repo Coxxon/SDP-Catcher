@@ -37,12 +37,13 @@ const devices = [
   }
 ];
 
-const generatePayload = (deviceIp, streamName, multicastIp) => {
+const generatePayload = (deviceName, deviceIp, streamName, multicastIp) => {
   return Buffer.from(
     'SAP_HEADER_MOCK\n' +
     'v=0\n' +
     `o=- 123456789 1 IN IP4 ${deviceIp}\n` +
     `s=${streamName}\n` +
+    `i=${deviceName}\n` +
     `c=IN IP4 ${multicastIp}\n` +
     't=0 0\n' +
     'm=audio 5004 RTP/AVP 97\n' +
@@ -65,7 +66,7 @@ server.on('listening', () => {
 const sendPackets = () => {
   devices.forEach(device => {
     device.streams.forEach(stream => {
-      const payload = generatePayload(device.ip, stream.name, stream.multicast);
+      const payload = generatePayload(device.name, device.ip, stream.name, stream.multicast);
       server.send(payload, 0, payload.length, PORT, MULTICAST_ADDR, (err) => {
         if (err) console.error(`Error sending ${stream.name}:`, err);
       });

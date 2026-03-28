@@ -29,15 +29,18 @@ function App() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
 
-  const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string } => {
+  const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string; sessionInfo: string | null } => {
     const lines = raw.split(/\r?\n/);
     let name = "Unknown Stream";
     let multicastIp = "0.0.0.0";
     let originIp = "0.0.0.0";
+    let sessionInfo: string | null = null;
 
     for (const line of lines) {
       if (line.startsWith("s=")) {
         name = line.substring(2).trim();
+      } else if (line.startsWith("i=")) {
+        sessionInfo = line.substring(2).trim();
       } else if (line.startsWith("c=IN IP4 ")) {
         const parts = line.substring(9).split("/");
         multicastIp = parts[0].trim();
@@ -48,24 +51,29 @@ function App() {
         }
       }
     }
-    return { name, multicastIp, originIp };
+    return { name, multicastIp, originIp, sessionInfo };
   };
 
   useEffect(() => {
     const unlisten = listen<SdpDiscoveredEvent>("sdp-discovered", (event) => {
       console.log("📥 Évènement IPC reçu depuis Rust :", event.payload);
       const { sdp_content } = event.payload;
-      const { name, multicastIp, originIp } = parseSdp(sdp_content);
+      const { name, multicastIp, originIp, sessionInfo } = parseSdp(sdp_content);
 
       if (originIp === "0.0.0.0") return;
 
       setDevices((prev) => {
         const timestamp = Date.now();
         const existingDeviceIndex = prev.findIndex((d) => d.ip === originIp);
+        const deviceName = sessionInfo || `Device ${originIp}`;
 
         if (existingDeviceIndex >= 0) {
           const newDevices = [...prev];
           const device = { ...newDevices[existingDeviceIndex] };
+          
+          // Mémoriser/Mettre à jour le nom convivial si reçu
+          device.name = deviceName;
+
           const existingStreamIndex = device.streams.findIndex((s) => s.name === name);
 
           if (existingStreamIndex >= 0) {
@@ -90,7 +98,7 @@ function App() {
           return [
             ...prev,
             {
-              name: `Device ${originIp}`,
+              name: deviceName,
               ip: originIp,
               streams: [
                 {

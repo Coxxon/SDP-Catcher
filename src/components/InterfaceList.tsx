@@ -33,7 +33,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-64 lg:w-72 shrink-0">
-      <div className="bg-neutral-800 p-3 border-b border-neutral-700 flex items-center justify-between">
+      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
         <div className="flex items-center gap-2">
           <Network size={14} className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Interfaces</h2>
