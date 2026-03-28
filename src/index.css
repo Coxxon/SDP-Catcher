@@ -39,6 +39,5 @@ body {
   background: var(--color-neutral-700);
 }
 
-* {
-  border-radius: 0 !important;
-}
+
+/* No global border-radius reset - let's keep it fluid */

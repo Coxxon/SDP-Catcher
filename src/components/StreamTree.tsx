@@ -42,17 +42,18 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   };
 
   const getStatusClasses = (status: string) => {
+    const base = "rounded-full aspect-square block";
     switch (status) {
       case "online":
-        return "bg-green-500 shadow-[0_0_3px_rgba(34,197,94,0.3)]";
+        return `${base} bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.2)]`;
       case "offline":
-        return "bg-red-500 shadow-[0_0_3px_rgba(239,68,68,0.3)]";
+        return `${base} bg-red-500 shadow-[0_0_2px_rgba(239,68,68,0.2)]`;
       case "standby":
-        return "bg-orange-500 shadow-[0_0_3px_rgba(249,115,22,0.3)]";
+        return `${base} bg-orange-500 shadow-[0_0_2px_rgba(249,115,22,0.2)]`;
       case "partial":
-        return "bg-orange-500 shadow-[0_0_3px_rgba(249,115,22,0.3)] animate-blink";
+        return `${base} bg-orange-500 shadow-[0_0_2px_rgba(249,115,22,0.2)] animate-blink`;
       default:
-        return "bg-neutral-600 opacity-50";
+        return `${base} bg-neutral-600 opacity-50`;
     }
   };
 
@@ -69,7 +70,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         <button 
             onClick={onClearOffline}
             title="Supprimer les flux hors-ligne"
-            className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-all"
+            className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-all font-sans"
         >
             <Trash2 size={14} />
         </button>
@@ -97,7 +98,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   </div>
                   <div className="relative pointer-events-none">
                     <HardDrive size={14} className="text-neutral-500 group-hover:text-neutral-300" />
-                    <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${statusClass}`} />
+                    <div className={`absolute -top-1 -right-1 w-2 h-2 ${statusClass}`} />
                   </div>
                   <div className="flex flex-col items-start leading-none min-w-0 text-left">
                     <span className="text-[11px] font-bold text-neutral-200 truncate w-full tracking-tight">{device.name}</span>
@@ -122,7 +123,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                           }`}
                         >
                            <div className="flex items-center gap-2 w-full">
-                              <div className={`w-1.5 h-1.5 rounded-full ${streamStatusClass}`} />
+                              <div className={`w-1.5 h-1.5 ${streamStatusClass}`} />
                               <span className={`truncate flex-1 text-left ${selectedStreamId === stream.id ? 'text-white' : 'text-zinc-300'}`}>
                                 {stream.name}
                               </span>
