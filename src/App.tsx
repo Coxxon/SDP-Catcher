@@ -203,9 +203,10 @@ function App() {
       
       // Flexible IP Isolation (remove mask if present)
       const selectedIp = activeIp?.split("/")[0] || "";
-      console.log("PTP Received on:", interface_ip, "Selected:", selectedIp);
 
       if (interface_ip !== selectedIp) return;
+
+      console.log("✅ GMC MATCH: ", interface_ip);
 
       // Trigger orange transition on GMC switch (using useRef for immediate check)
       if (previousGmcId.current !== null && ptp_id !== previousGmcId.current) {
@@ -369,7 +370,7 @@ function App() {
               className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer underline decoration-dotted decoration-neutral-600' : 'text-neutral-600 italic cursor-not-allowed'}`}
               title={isPtpActive ? `Mode: ${footerDisplayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)` : "PTP Clock Offline"}
             >
-              {isPtpActive ? getFooterGmcText() : "Disconnected"}
+              {isPtpActive ? getFooterGmcText() : `No PTP data on ${activeIp?.split('/')[0] || 'Unknown'}`}
             </span>
           </div>
         </div>

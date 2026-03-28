@@ -216,60 +216,95 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                     }
                 }
             });
+        }
 
-            // Spawn Hybrid PTP Socket thread for IGMP membership and capture
-            let stop_flag_ptp = Arc::clone(&stop_flag);
-            let app_ptp = app.clone();
-            let discovery_ptp = Arc::clone(&discovery_table_arc);
-            let ptp_iface_ip = ip.clone();
+        // Spawn Global PTP Socket thread for IGMP membership and capture
+        let stop_flag_ptp = Arc::clone(&stop_flag);
+        let app_ptp = app.clone();
+        let discovery_ptp = Arc::clone(&discovery_table_arc);
+        let selected_ips = interface_ips.clone();
 
-            thread::spawn(move || {
-                let ptp_addr = Ipv4Addr::new(224, 0, 1, 129);
-                let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP));
-                if let Ok(socket) = socket {
-                    socket.set_reuse_address(true).ok();
-                    #[cfg(not(windows))]
-                    socket.set_reuse_port(true).ok();
+        thread::spawn(move || {
+            let ptp_addr = Ipv4Addr::new(224, 0, 1, 129);
+            let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP));
+            if let Ok(socket) = socket {
+                socket.set_reuse_address(true).ok();
+                #[cfg(not(windows))]
+                socket.set_reuse_port(true).ok();
+                
+                socket.set_multicast_loop_v4(true).ok(); // CRITICAL for simulator
 
-                    if socket.bind(&"0.0.0.0:320".parse::<std::net::SocketAddr>().unwrap().into()).is_ok() {
-                        if let Ok(iface_addr) = ptp_iface_ip.parse::<Ipv4Addr>() {
+                if socket.bind(&"0.0.0.0:320".parse::<std::net::SocketAddr>().unwrap().into()).is_ok() {
+                    let interfaces = datalink::interfaces();
+                    let mut subnets = Vec::new();
+
+                    for ip_str in &selected_ips {
+                        if let Ok(iface_addr) = ip_str.parse::<Ipv4Addr>() {
                             socket.join_multicast_v4(&ptp_addr, &iface_addr).ok();
                         }
-
-                        let udp_socket: std::net::UdpSocket = socket.into();
-                        udp_socket.set_read_timeout(Some(Duration::from_millis(500))).ok();
-
-                        let mut buf = [0u8; 1024];
-                        while !stop_flag_ptp.load(Ordering::Relaxed) {
-                            if let Ok((size, src)) = udp_socket.recv_from(&mut buf) {
-                                let payload = &buf[..size];
-                                if payload.len() >= 44 && payload[0] & 0x0F == 0x0B {
-                                    let clock_id = &payload[20..28];
-                                    let ptp_id = clock_id.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("-");
-                                    let source_ip = src.ip().to_string();
-
-                                    let mut table = discovery_ptp.lock().unwrap();
-                                    let name = if let Some(info) = table.get(&ptp_id) {
-                                        info.name.clone()
-                                    } else if let Some(info) = table.get(&source_ip) {
-                                        info.name.clone()
-                                    } else {
-                                        "---".to_string()
-                                    };
-
-                                    app_ptp.emit("ptp-clock-update", PtpPayload {
-                                        ptp_id,
-                                        name,
-                                        ip: source_ip,
-                                        interface_ip: ptp_iface_ip.clone(),
-                                    }).ok();
+                        
+                        // Cache subnet info for matching
+                        for iface in &interfaces {
+                            for ipv4 in &iface.ipv4 {
+                                if ipv4.addr.to_string() == *ip_str {
+                                    let ip_u32 = u32::from_be_bytes(ipv4.addr.octets());
+                                    let mask_u32 = u32::from_be_bytes(ipv4.netmask.octets());
+                                    subnets.push((ip_str.clone(), ip_u32, mask_u32));
                                 }
                             }
                         }
                     }
+
+                    let udp_socket: std::net::UdpSocket = socket.into();
+                    udp_socket.set_read_timeout(Some(Duration::from_millis(500))).ok();
+
+                    let mut buf = [0u8; 1024];
+                    while !stop_flag_ptp.load(Ordering::Relaxed) {
+                        if let Ok((size, src)) = udp_socket.recv_from(&mut buf) {
+                            let payload = &buf[..size];
+                            if payload.len() >= 44 && payload[0] & 0x0F == 0x0B {
+                                let clock_id = &payload[20..28];
+                                let ptp_id = clock_id.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("-");
+                                let source_ip = src.ip().to_string();
+
+                                // Determine the interface_ip by subnet matching
+                                let mut matched_interface = String::new();
+                                if let std::net::IpAddr::V4(src_v4) = src.ip() {
+                                    let src_u32 = u32::from_be_bytes(src_v4.octets());
+                                    for (iface_ip, ip_u32, mask_u32) in &subnets {
+                                        if (src_u32 & mask_u32) == (*ip_u32 & mask_u32) {
+                                            matched_interface = iface_ip.clone();
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                // Default fallback to first targeted interface if match fails
+                                if matched_interface.is_empty() && !selected_ips.is_empty() {
+                                    matched_interface = selected_ips[0].clone();
+                                }
+
+                                let mut table = discovery_ptp.lock().unwrap();
+                                let name = if let Some(info) = table.get(&ptp_id) {
+                                    info.name.clone()
+                                } else if let Some(info) = table.get(&source_ip) {
+                                    info.name.clone()
+                                } else {
+                                    "---".to_string()
+                                };
+
+                                app_ptp.emit("ptp-clock-update", PtpPayload {
+                                    ptp_id,
+                                    name,
+                                    ip: source_ip,
+                                    interface_ip: matched_interface,
+                                }).ok();
+                            }
+                        }
+                    }
                 }
-            });
-        }
+            }
+        });
 
         // Main thread handles SAP with Gleaning
         let mut buf = [0u8; 4096];
