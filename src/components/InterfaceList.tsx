@@ -277,20 +277,18 @@ export function InterfaceList({
                   onClick={() => handleClick(iface.ip)}
                   className={`w-full text-left px-3 py-2 transition-all border-b group relative flex flex-col gap-0.5 ${
                     isActive
-                      ? "bg-neutral-700 text-white border-blue-500/50"
-                      : hasStreams 
-                        ? "bg-blue-500/5 border-blue-500/20 text-neutral-300" 
-                        : "text-neutral-400 hover:bg-neutral-800 border-neutral-800/50"
+                      ? "bg-neutral-700 text-white border-neutral-600"
+                      : "text-neutral-400 hover:bg-neutral-800 border-neutral-800/50"
                   } ${isHidden ? "opacity-30" : "opacity-100"} select-none`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
                           {iface.name}
                         </span>
                         {hasStreams && (
-                            <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-lg shadow-blue-500/20">
-                                {streamCount}
+                            <span className="ml-auto text-zinc-500 text-[11px] italic pr-2">
+                                {streamCount} streams
                             </span>
                         )}
                     </div>

@@ -1,7 +1,9 @@
 import dgram from 'node:dgram';
 
 const MULTICAST_ADDR = '239.255.255.255';
+const PTP_MULTICAST_ADDR = '224.0.1.129';
 const PORT = 9875;
+const PTP_PORT = 320;
 const INTERVAL = 2000;
 
 const server = dgram.createSocket({ type: 'udp4', reuseAddr: true });
@@ -72,7 +74,14 @@ const sendPackets = () => {
       });
     });
   });
-  console.log(`[${new Date().toLocaleTimeString()}] Sent 9 SDP streams across 3 devices.`);
+
+  // Envoi d'un Master Clock PTP simulé
+  const ptpPayload = Buffer.from('PTP_MOCK|Grandmaster_StudioA|192.168.1.100');
+  server.send(ptpPayload, 0, ptpPayload.length, PTP_PORT, PTP_MULTICAST_ADDR, (err) => {
+    if (err) console.error(`Error sending PTP:`, err);
+  });
+
+  console.log(`[${new Date().toLocaleTimeString()}] Sent 9 SDP streams and 1 PTP Master Clock.`);
 };
 
 server.bind(() => {

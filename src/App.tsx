@@ -30,11 +30,14 @@ export interface InterfaceInfo {
   mask: string;
 }
 
+const ipToLong = (ip: string) => ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+
 function App() {
   const [activeIp, setActiveIp] = useState<string | null>(null);
   const [isSniffing, setIsSniffing] = useState(false);
   const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
+  const [masterClocks, setMasterClocks] = useState<{name: string, ip: string}[]>([]);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
 
   const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string; sessionInfo: string | null } => {
@@ -157,8 +160,17 @@ function App() {
       });
     });
 
+    const unlistenPtp = listen<{name: string, ip: string}>("ptp-clock-update", (event) => {
+      setMasterClocks(prev => {
+          const exists = prev.find(c => c.ip === event.payload.ip);
+          if (exists) return prev;
+          return [...prev, event.payload];
+      });
+    });
+
     return () => {
       unlisten.then((f) => f());
+      unlistenPtp.then((f) => f());
     };
   }, []);
 
@@ -168,7 +180,6 @@ function App() {
     } else {
         setActiveIp(ip);
     }
-    // No more stopping/starting here, sniffing is global
   };
 
   const filteredDevices = activeIp 
@@ -176,13 +187,22 @@ function App() {
         const activeIface = interfaces.find(i => i.ip === activeIp);
         if (!activeIface) return devices;
         
-        const ipToLong = (ip: string) => ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
         const m = ipToLong(activeIface.mask);
-        const target = ipToLong(activeIface.ip) & m;
+        const target = (ipToLong(activeIface.ip) & m) >>> 0;
         
-        return devices.filter(d => (ipToLong(d.ip) & m) === target);
+        return devices.filter(d => ((ipToLong(d.ip) & m) >>> 0) === target);
       })()
     : devices;
+
+  const activeClock = activeIp && interfaces.length > 0
+    ? (() => {
+        const activeIface = interfaces.find(i => i.ip === activeIp);
+        if (!activeIface) return null;
+        const m = ipToLong(activeIface.mask);
+        const target = (ipToLong(activeIface.ip) & m) >>> 0;
+        return masterClocks.find(c => ((ipToLong(c.ip) & m) >>> 0) === target);
+      })()
+    : null;
 
   return (
     <main className="flex h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none">
@@ -205,6 +225,19 @@ function App() {
         sdp={selectedStream?.sdpContent || null}
         sourceIp={selectedStream ? `${selectedStream.name} (${selectedStream.multicastIp})` : undefined}
       />
+      
+      {/* Footer PTP Clock */}
+      <footer className="fixed bottom-0 left-0 w-full h-7 bg-zinc-950 border-t border-zinc-800 flex items-center px-4 z-50">
+        <div className="flex items-center gap-2">
+            <div className={`w-1.5 h-1.5 rounded-full ${activeClock ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-500 animate-pulse'}`} />
+            <span className="text-[10px] text-zinc-500 font-bold tracking-tight uppercase">
+                PTPv2 Master Clock: 
+                <span className={activeClock ? 'text-zinc-300 ml-1' : 'text-zinc-600 ml-1 italic opacity-50'}>
+                    {activeClock ? `${activeClock.name} (${activeClock.ip})` : '--'}
+                </span>
+            </span>
+        </div>
+      </footer>
     </main>
   );
 }
