@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Network, Activity, Settings, RefreshCw, X, Check, Pencil } from "lucide-react";
+import { Network, Settings, RefreshCw, X, Check, Pencil } from "lucide-react";
 import { Device, InterfaceInfo } from "../App";
 
 interface InterfaceListProps {
@@ -177,7 +177,6 @@ export function InterfaceList({
               const isEditing = editingIp === iface.ip;
               const cidr = maskToCidr(iface.mask);
               const streamCount = getStreamCount(iface);
-              const hasStreams = streamCount > 0;
               
               if (isEditing) {
                   return (
@@ -278,7 +277,7 @@ export function InterfaceList({
                   className={`w-full text-left px-3 py-2 transition-all border-b group relative flex flex-col gap-0.5 ${
                     isActive
                       ? "bg-neutral-800 text-white border-neutral-700"
-                      : "text-neutral-400 hover:bg-neutral-800 border-neutral-800/50"
+                      : "text-neutral-400 hover:bg-neutral-800/40 border-neutral-800/50"
                   } ${isHidden ? "opacity-30" : "opacity-100"} select-none`}
                 >
                   <div className="flex items-center justify-between">
@@ -286,19 +285,8 @@ export function InterfaceList({
                         <span className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
                           {iface.name}
                         </span>
-                        {hasStreams && (
-                            <span className="ml-auto text-zinc-500 text-[11px] italic pr-2">
-                                {streamCount} streams
-                            </span>
-                        )}
                     </div>
                     <div className="flex items-center gap-1.5">
-                      {isActive && (
-                        <Activity 
-                            size={10} 
-                            className={isSniffing ? "text-green-500 animate-pulse" : "text-amber-500"} 
-                        />
-                      )}
                       {!isEditMode && (
                         <div 
                           onClick={(e) => { 
@@ -312,8 +300,13 @@ export function InterfaceList({
                       )}
                     </div>
                   </div>
-                  <div className="text-xs text-zinc-500 font-mono flex gap-2">
+                  <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
                     <span>{iface.ip} <span className="opacity-60">/{cidr}</span></span>
+                    {streamCount > 0 && (
+                        <span className="text-[10px] italic opacity-50 pr-1">
+                            {streamCount} {streamCount === 1 ? 'stream' : 'streams'}
+                        </span>
+                    )}
                   </div>
                 </button>
               );

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronRight, Monitor, Rss } from "lucide-react";
+import { ChevronRight, HardDrive, Rss } from "lucide-react";
 import { Device, Stream } from "../App";
 
 interface StreamTreeProps {
@@ -46,13 +46,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
               <div key={device.ip} className="border-b border-neutral-800/50">
                 <button
                   onClick={() => toggleDevice(device.ip)}
-                  className="w-full flex items-center gap-2 px-3 py-2 bg-neutral-800/20 hover:bg-neutral-800 transition-all group"
+                  className="w-full flex items-center gap-2 px-3 py-2 bg-neutral-950 hover:bg-neutral-900 transition-all group"
                 >
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
                     <ChevronRight size={14} className="text-neutral-600" />
                   </div>
-                  <Monitor size={14} className="text-neutral-500 group-hover:text-neutral-300" />
-                  <div className="flex flex-col items-start leading-none min-w-0">
+                  <HardDrive size={14} className="text-neutral-500 group-hover:text-neutral-300" />
+                  <div className="flex flex-col items-start leading-none min-w-0 text-left">
                     <span className="text-[11px] font-bold text-neutral-200 truncate w-full tracking-tight">{device.name}</span>
                     <span className="text-xs text-zinc-500 font-mono mt-0.5">{device.ip}</span>
                   </div>
@@ -67,13 +67,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
                         className={`w-full flex flex-col items-start py-2 px-8 text-[12px] transition-all border-b border-neutral-800/30 ${
                           selectedStreamId === stream.id
                             ? "bg-neutral-800 text-white font-bold"
-                            : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800"
+                            : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
                         }`}
                       >
                          <span className={`truncate w-full text-left ${selectedStreamId === stream.id ? 'text-white' : 'text-zinc-300'}`}>
                            {stream.name}
                          </span>
-                         <span className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                         <span className="text-sm text-zinc-500 font-mono mt-0.5">
                            {stream.multicastIp}
                          </span>
                       </button>
