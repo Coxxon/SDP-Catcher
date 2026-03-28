@@ -110,17 +110,16 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   const resolvedIp = sourceIp;
   
   // Exhaustive lookup for simulated or real environments
-  const resolved = arpTable[gmId] || arpTable[gmMac] || (resolvedIp ? arpTable[resolvedIp] : null);
+  const resolved = arpTable[gmId] || arpTable[gmMac] || (sourceIp ? arpTable[sourceIp] : undefined);
 
-  // Logic for display: Name > IP > MAC
-  const hasName = resolved?.name && resolved.name !== "---";
-  const hasIp = !!resolved?.ip || !!resolvedIp;
+  // Logic for display: Name > IP > MAC/ID
+  const hasName = !!resolved?.name && resolved.name !== "---";
+  const hasIp = !!resolved?.ip;
 
   const cycleDisplayMode = () => {
-    if (!hasIp && !hasName) return; // Only MAC available, no toggle
+    if (!hasIp && !hasName) return; 
 
     if (displayMode === 'auto') {
-      // First click: from best auto to next best or MAC
       if (hasName) setDisplayMode('ip');
       else setDisplayMode('mac');
     } else if (displayMode === 'ip') {
@@ -134,15 +133,21 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   };
 
   const getDisplayText = () => {
+    const fallback = gmMac || gmId || "Unknown";
     if (displayMode === 'auto') {
-      if (hasName) return resolved.name;
-      if (hasIp) return resolved.ip;
-      return gmMac;
+      if (hasName) return resolved?.name;
+      if (hasIp) return resolved?.ip;
+      return fallback;
     }
-    if (displayMode === 'name') return resolved?.name || gmMac;
-    if (displayMode === 'ip') return resolved?.ip || gmMac;
-    return gmMac;
+    if (displayMode === 'name') return resolved?.name || fallback;
+    if (displayMode === 'ip') return resolved?.ip || fallback;
+    return fallback;
   };
+
+  // Reset display mode to 'auto' when SDP or IP changes
+  useEffect(() => {
+    setDisplayMode('auto');
+  }, [sdp, sourceIp]);
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 flex-1 min-w-0">
