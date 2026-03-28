@@ -125,18 +125,21 @@ fn set_network_ip(interface_name: String, is_dhcp: bool, ip: Option<String>, mas
     println!("🔧 Modification réseau : {} (DHCP: {})", interface_name, is_dhcp);
     
     let mut cmd = std::process::Command::new("netsh");
-    cmd.arg("interface").arg("ip").arg("set").arg("address");
-    cmd.arg(format!("name=\"{}\"", interface_name));
+    let mut args = vec!["interface", "ip", "set", "address", interface_name.as_str()];
 
     if is_dhcp {
-        cmd.arg("source=dhcp");
+        args.push("dhcp");
     } else {
-        if let (Some(ip_addr), Some(mask_addr)) = (ip, mask) {
-            cmd.arg("static").arg(ip_addr).arg(mask_addr);
+        if let (Some(ip_addr), Some(mask_addr)) = (ip.as_deref(), mask.as_deref()) {
+            args.push("static");
+            args.push(ip_addr);
+            args.push(mask_addr);
         } else {
             return Err("IP and Mask are required for static configuration".to_string());
         }
     }
+    
+    cmd.args(args);
 
     match cmd.output() {
         Ok(output) => {

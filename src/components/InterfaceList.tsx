@@ -54,8 +54,10 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
     }
   };
 
-  const handleDoubleClick = (iface: InterfaceInfo) => {
+  const handleDoubleClick = async (iface: InterfaceInfo) => {
     if (isEditMode) return;
+    // 1. Stop sniffing instantly when entering edit mode to release socket
+    await invoke("stop_sniffing");
     setEditingIp(iface.ip);
     setEditForm({ isDhcp: false, ip: iface.ip, mask: iface.mask });
   };
@@ -63,13 +65,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
   const handleApply = async (iface: InterfaceInfo) => {
     setIsPending(true);
     try {
-      // 1. Stop sniffing first to release the socket and prevent Windows driver deadlock
-      await invoke("stop_sniffing");
-      
-      // 2. Safety delay (requested)
-      await new Promise((r) => setTimeout(r, 1000));
-
-      // 3. Apply the new IP
+      // 1. Apply the new IP
       const result = await invoke("set_network_ip", {
         interfaceName: iface.name,
         isDhcp: editForm.isDhcp,
@@ -78,12 +74,19 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
       });
       console.log(result);
       
-      // 4. Reset selection in UI and close edit mode
-      onInterfaceSelect(""); // Force the user to re-select
+      // 2. Delay for Windows driver to stabilize
+      await new Promise((r) => setTimeout(r, 2500));
+
+      // 3. Auto-restart sniffing on the new (or old if DHCP) IP
+      const finalIp = editForm.isDhcp ? iface.ip : editForm.ip;
+      await invoke("start_sniffing", { interfaceIp: finalIp });
+      
+      // 4. Update state and close edit mode
+      onInterfaceSelect(finalIp); 
       setEditingIp(null);
       
-      // 5. Refresh interfaces after Windows updates
-      setTimeout(refreshInterfaces, 2000); 
+      // 5. Refresh interface list
+      setTimeout(refreshInterfaces, 1000); 
     } catch (err: any) {
       alert(`Erreur: ${err}`);
       console.error(err);
@@ -141,7 +144,14 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
                              <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">{iface.name}</span>
                              <div className="flex gap-2">
                                  <button 
-                                     onClick={(e) => { e.stopPropagation(); setEditingIp(null); }} 
+                                     onClick={async (e) => { 
+                                         e.stopPropagation(); 
+                                         setEditingIp(null);
+                                         // If we cancel the edit, resume sniffing on the active card
+                                         if (activeIp) {
+                                            await invoke("start_sniffing", { interfaceIp: activeIp });
+                                         }
+                                     }} 
                                      className="text-neutral-500 hover:text-white"
                                  >
                                      <X size={14} />
