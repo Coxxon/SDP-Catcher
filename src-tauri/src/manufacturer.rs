@@ -99,9 +99,9 @@ impl Manufacturer {
             Manufacturer::Riedel => 12_000,
             Manufacturer::Audinate => 35_000,
             Manufacturer::Yamaha => 35_000,
-            Manufacturer::Merging => 30_000,
+            Manufacturer::Merging => 35_000,
             Manufacturer::Lawo => 35_000,
-            Manufacturer::DirectOut => 30_000,
+            Manufacturer::DirectOut => 35_000,
             Manufacturer::Digico => 35_000,
             Manufacturer::SSL => 35_000,
             Manufacturer::AllenHeath => 35_000,
@@ -143,7 +143,9 @@ impl Manufacturer {
 }
 
 pub fn identify_manufacturer(mac: &str) -> Manufacturer {
-    let clean_mac = mac.replace(|c: char| !c.is_alphanumeric(), "").to_uppercase();
+    let clean_mac = mac
+        .replace(|c: char| !c.is_alphanumeric(), "")
+        .to_uppercase();
     if clean_mac.len() < 6 {
         return Manufacturer::Unknown;
     }
