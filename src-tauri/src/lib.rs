@@ -37,21 +37,34 @@ pub struct AppState {
 }
 
 fn get_mac_from_arp(ip: &str) -> (String, String) {
+    // We use a global scan 'arp -a' for maximum reliability across Windows versions
     let output = std::process::Command::new("arp")
-        .args(&["-a", ip])
+        .arg("-a")
         .output();
 
     if let Ok(out) = output {
         let stdout = String::from_utf8_lossy(&out.stdout);
         for line in stdout.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
-            if parts.len() >= 2 && parts[0] == ip {
-                let mac = parts[1].replace("-", ":").to_uppercase();
-                let oui = mac.split(':').take(3).collect::<Vec<_>>().join("");
-                return (mac, oui);
+            
+            // Standard Windows ARP output has IP at index 0 and MAC at index 1
+            if parts.len() >= 2 {
+                let entry_ip = parts[0];
+                let entry_mac = parts[1];
+                
+                // Strict IP match
+                if entry_ip == ip {
+                    let mac = entry_mac.replace("-", ":").to_uppercase();
+                    let oui = mac.split(':').take(3).collect::<Vec<_>>().join("");
+                    println!("🎯 [ARP] Match: IP {} -> MAC {} (OUI {})", ip, mac, oui);
+                    return (mac, oui);
+                }
             }
         }
     }
+    
+    // Diagnostic log for unreachable devices
+    println!("⚠️ [ARP] No entry found in system table for IP {}", ip);
     ("Unknown".to_string(), "Unknown".to_string())
 }
 
