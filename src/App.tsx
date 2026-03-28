@@ -201,8 +201,11 @@ function App() {
     const unlistenPtp = listen<{ptp_id: string, name: string, ip: string, interface_ip: string}>("ptp-clock-update", (event) => {
       const { ptp_id, interface_ip } = event.payload;
       
-      // Interface Isolation
-      if (interface_ip !== activeIp) return;
+      // Flexible IP Isolation (remove mask if present)
+      const selectedIp = activeIp?.split("/")[0] || "";
+      console.log("PTP Received on:", interface_ip, "Selected:", selectedIp);
+
+      if (interface_ip !== selectedIp) return;
 
       // Trigger orange transition on GMC switch (using useRef for immediate check)
       if (previousGmcId.current !== null && ptp_id !== previousGmcId.current) {

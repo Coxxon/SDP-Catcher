@@ -15,6 +15,7 @@ use pnet::packet::ipv4::Ipv4Packet;
 use pnet::packet::udp::UdpPacket;
 use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::Packet;
+use socket2::{Domain, Protocol, Socket, Type};
 use std::collections::HashMap;
 
 #[derive(Serialize)]
@@ -141,12 +142,9 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
 
     thread::spawn(move || {
         let sap_addr = Ipv4Addr::new(239, 255, 255, 255);
-        let ptp_addr = Ipv4Addr::new(224, 0, 1, 129);
         let sap_port = 9875;
-        let ptp_port = 320;
 
         let mut sap_socket = None;
-        let mut ptp_socket = None;
 
         // Try binding SAP
         for _ in 0..5 {
@@ -214,38 +212,57 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                     }
                                 }
                             }
-                            
-                            // PTP (UDP 320)
-                            if eth.get_ethertype() == EtherTypes::Ipv4 {
-                                if let Some(ipv4) = Ipv4Packet::new(eth.payload()) {
-                                    if ipv4.get_next_level_protocol() == IpNextHeaderProtocols::Udp {
-                                        if let Some(udp) = UdpPacket::new(ipv4.payload()) {
-                                            if udp.get_destination() == 320 {
-                                                let payload = udp.payload();
-                                                if payload.len() >= 44 && payload[0] & 0x0F == 0x0B {
-                                                    let clock_id = &payload[20..28];
-                                                    let ptp_id = clock_id.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("-");
-                                                    let source_ip = ipv4.get_source().to_string();
-                                                    
-                                                    let mut table = discovery_lldp.lock().unwrap();
-                                                    let name = if let Some(info) = table.get(&ptp_id) {
-                                                        info.name.clone()
-                                                    } else if let Some(info) = table.get(&source_ip) {
-                                                        info.name.clone()
-                                                    } else {
-                                                        "---".to_string()
-                                                    };
-                                                    
-                                                    app_lldp.emit("ptp-clock-update", PtpPayload {
-                                                        ptp_id,
-                                                        name,
-                                                        ip: source_ip,
-                                                        interface_ip: target_ip.clone(),
-                                                    }).ok();
-                                                }
-                                            }
-                                        }
-                                    }
+                        }
+                    }
+                }
+            });
+
+            // Spawn Hybrid PTP Socket thread for IGMP membership and capture
+            let stop_flag_ptp = Arc::clone(&stop_flag);
+            let app_ptp = app.clone();
+            let discovery_ptp = Arc::clone(&discovery_table_arc);
+            let ptp_iface_ip = ip.clone();
+
+            thread::spawn(move || {
+                let ptp_addr = Ipv4Addr::new(224, 0, 1, 129);
+                let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP));
+                if let Ok(socket) = socket {
+                    socket.set_reuse_address(true).ok();
+                    #[cfg(not(windows))]
+                    socket.set_reuse_port(true).ok();
+
+                    if socket.bind(&"0.0.0.0:320".parse::<std::net::SocketAddr>().unwrap().into()).is_ok() {
+                        if let Ok(iface_addr) = ptp_iface_ip.parse::<Ipv4Addr>() {
+                            socket.join_multicast_v4(&ptp_addr, &iface_addr).ok();
+                        }
+
+                        let udp_socket: std::net::UdpSocket = socket.into();
+                        udp_socket.set_read_timeout(Some(Duration::from_millis(500))).ok();
+
+                        let mut buf = [0u8; 1024];
+                        while !stop_flag_ptp.load(Ordering::Relaxed) {
+                            if let Ok((size, src)) = udp_socket.recv_from(&mut buf) {
+                                let payload = &buf[..size];
+                                if payload.len() >= 44 && payload[0] & 0x0F == 0x0B {
+                                    let clock_id = &payload[20..28];
+                                    let ptp_id = clock_id.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("-");
+                                    let source_ip = src.ip().to_string();
+
+                                    let mut table = discovery_ptp.lock().unwrap();
+                                    let name = if let Some(info) = table.get(&ptp_id) {
+                                        info.name.clone()
+                                    } else if let Some(info) = table.get(&source_ip) {
+                                        info.name.clone()
+                                    } else {
+                                        "---".to_string()
+                                    };
+
+                                    app_ptp.emit("ptp-clock-update", PtpPayload {
+                                        ptp_id,
+                                        name,
+                                        ip: source_ip,
+                                        interface_ip: ptp_iface_ip.clone(),
+                                    }).ok();
                                 }
                             }
                         }
