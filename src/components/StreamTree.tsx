@@ -1,6 +1,30 @@
-import { useState } from "react";
-import { ChevronRight, HardDrive, Rss, Trash2 } from "lucide-react";
-import { Device, Stream } from "../App";
+import React, { useState } from "react";
+import { Rss, ChevronRight, HardDrive, Trash2, FileText } from "lucide-react";
+import { Stream, Device } from "../App";
+
+const manufacturerLogos: { [key: string]: React.ReactNode } = {
+  "Riedel": (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-full w-auto">
+      <path d="M7 16V4h4c2.5 0 4.5 2 4.5 4.5S13.5 13 11 13H7m0 0l5 5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  "Yamaha": (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-auto">
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1" />
+      <path d="M12 7v10M7 12h10M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="currentColor" strokeWidth="1" />
+    </svg>
+  ),
+  "Audinate": (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-auto">
+      <path d="M7 3h6a8 8 0 0 1 0 16H7V3zm2 2v12h4a6 6 0 0 0 0-12H9z"/>
+    </svg>
+  ),
+  "Merging": (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-auto">
+      <path d="M12 4L4 20h16L12 4zm0 4l5.5 11h-11L12 8z"/>
+    </svg>
+  )
+};
 
 interface StreamTreeProps {
   devices: Device[];
@@ -91,7 +115,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
               <div key={device.ip} className="border-b border-neutral-800/50">
                 <button
                   onClick={() => toggleDevice(device.ip)}
-                  className="w-full flex items-center gap-2 px-3 py-2 bg-neutral-950 hover:bg-neutral-900 transition-all group"
+                  className="w-full flex items-center gap-2 px-3 py-2 bg-neutral-950 hover:bg-neutral-900 transition-all group relative overflow-hidden"
                 >
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
                     <ChevronRight size={14} className="text-neutral-600" />
@@ -100,10 +124,18 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                     <HardDrive size={14} className="text-neutral-500 group-hover:text-neutral-300" />
                     <div className={`absolute -top-1 -right-1 w-2 h-2 ${statusClass}`} />
                   </div>
-                  <div className="flex flex-col items-start leading-none min-w-0 text-left">
+                  
+                  <div className="relative z-10 flex flex-col items-start leading-none min-w-0 text-left">
                     <span className="text-[11px] font-bold text-neutral-200 truncate w-full tracking-tight">{device.name}</span>
                     <span className="text-xs text-zinc-500 font-mono mt-0.5">{device.ip}</span>
                   </div>
+
+                  {/* Background Ghost Logo */}
+                  {manufacturerLogos[device.manufacturer] && (
+                    <div className="absolute top-0 right-0 h-full w-20 opacity-[0.05] text-neutral-600 pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden">
+                        {manufacturerLogos[device.manufacturer]}
+                    </div>
+                  )}
                 </button>
 
                 {isExpanded && (
