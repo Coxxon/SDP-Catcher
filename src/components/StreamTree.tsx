@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { ChevronRight, HardDrive, Rss } from "lucide-react";
+import { ChevronRight, HardDrive, Rss, Trash2 } from "lucide-react";
 import { Device, Stream } from "../App";
 
 interface StreamTreeProps {
   devices: Device[];
   onStreamSelect: (stream: Stream) => void;
   selectedStreamId: string | null;
+  onClearOffline?: () => void;
 }
 
-export function StreamTree({ devices, onStreamSelect, selectedStreamId }: StreamTreeProps) {
+export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearOffline }: StreamTreeProps) {
   const [expandedDevices, setExpandedDevices] = useState<string[]>([]);
 
   const toggleDevice = (ip: string) => {
@@ -22,16 +23,26 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
     onStreamSelect(stream);
   };
 
+  const isStreamOnline = (lastSeen: number) => Date.now() - lastSeen <= 15000;
+  const isDeviceOnline = (device: Device) => device.streams.some(s => isStreamOnline(s.lastSeen));
+
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-72 lg:w-80 shrink-0">
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
         <div className="flex items-center gap-2">
           <Rss size={14} className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
+          <span className="text-neutral-500 font-bold px-1 py-0.5 text-xs">
+            {devices.reduce((acc, d) => acc + d.streams.length, 0)}
+          </span>
         </div>
-        <span className="text-neutral-500 font-bold px-1 py-0.5 text-xs">
-          {devices.reduce((acc, d) => acc + d.streams.length, 0)}
-        </span>
+        <button 
+            onClick={onClearOffline}
+            title="Supprimer les flux hors-ligne"
+            className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-all"
+        >
+            <Trash2 size={14} />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-0 space-y-0">
@@ -42,6 +53,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
         ) : (
           devices.map((device) => {
             const isExpanded = expandedDevices.includes(device.ip);
+            const online = isDeviceOnline(device);
             return (
               <div key={device.ip} className="border-b border-neutral-800/50">
                 <button
@@ -51,7 +63,10 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
                     <ChevronRight size={14} className="text-neutral-600" />
                   </div>
-                  <HardDrive size={14} className="text-neutral-500 group-hover:text-neutral-300" />
+                  <div className="relative">
+                    <HardDrive size={14} className="text-neutral-500 group-hover:text-neutral-300" />
+                    <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border border-neutral-950 ${online ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-neutral-600 opacity-50'}`} />
+                  </div>
                   <div className="flex flex-col items-start leading-none min-w-0 text-left">
                     <span className="text-[11px] font-bold text-neutral-200 truncate w-full tracking-tight">{device.name}</span>
                     <span className="text-xs text-zinc-500 font-mono mt-0.5">{device.ip}</span>
@@ -60,24 +75,30 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
 
                 {isExpanded && (
                   <div className="space-y-0 bg-black/10">
-                    {device.streams.sort((a, b) => a.name.localeCompare(b.name)).map((stream) => (
-                      <button
-                        key={stream.id}
-                        onClick={() => handleStreamClick(stream)}
-                        className={`w-full flex flex-col items-start py-2 px-8 text-[12px] transition-all border-b border-neutral-800/30 ${
-                          selectedStreamId === stream.id
-                            ? "bg-neutral-800 text-white font-bold"
-                            : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
-                        }`}
-                      >
-                         <span className={`truncate w-full text-left ${selectedStreamId === stream.id ? 'text-white' : 'text-zinc-300'}`}>
-                           {stream.name}
-                         </span>
-                         <span className="text-sm text-zinc-500 font-mono mt-0.5">
-                           {stream.multicastIp}
-                         </span>
-                      </button>
-                    ))}
+                    {device.streams.sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
+                      const streamOnline = isStreamOnline(stream.lastSeen);
+                      return (
+                        <button
+                          key={stream.id}
+                          onClick={() => handleStreamClick(stream)}
+                          className={`w-full flex flex-col items-start py-2 px-8 text-[12px] transition-all border-b border-neutral-800/30 ${
+                            selectedStreamId === stream.id
+                              ? "bg-neutral-800 text-white font-bold"
+                              : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
+                          }`}
+                        >
+                           <div className="flex items-center gap-2 w-full">
+                              <div className={`w-1.5 h-1.5 rounded-full ${streamOnline ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]' : 'bg-red-500/50 opacity-50'}`} />
+                              <span className={`truncate flex-1 text-left ${selectedStreamId === stream.id ? 'text-white' : 'text-zinc-300'}`}>
+                                {stream.name}
+                              </span>
+                           </div>
+                           <span className="text-sm text-zinc-500 font-mono mt-0.5 pl-3.5">
+                             {stream.multicastIp}
+                           </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
               </div>

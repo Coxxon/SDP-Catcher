@@ -301,9 +301,9 @@ export function InterfaceList({
                     </div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
-                    <span>{iface.ip} <span className="opacity-60">/{cidr}</span></span>
+                    <span>{iface.ip} <span>/{cidr}</span></span>
                     {streamCount > 0 && (
-                        <span className="text-[10px] italic opacity-50 pr-1">
+                        <span className="pr-1">
                             {streamCount} {streamCount === 1 ? 'stream' : 'streams'}
                         </span>
                     )}

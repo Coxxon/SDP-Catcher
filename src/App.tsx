@@ -174,6 +174,24 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Periodic refresh to trigger online/offline recalculations in UI
+      setDevices(prev => [...prev]);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const clearOfflineStreams = () => {
+    const now = Date.now();
+    setDevices(prev => {
+      return prev.map(device => ({
+        ...device,
+        streams: device.streams.filter(stream => now - stream.lastSeen <= 15000)
+      })).filter(device => device.streams.length > 0);
+    });
+  };
+
   const handleInterfaceSelect = (ip: string) => {
     if (ip === activeIp) {
         setActiveIp(null);
@@ -220,6 +238,7 @@ function App() {
         devices={filteredDevices}
         onStreamSelect={setSelectedStream}
         selectedStreamId={selectedStream?.id || null}
+        onClearOffline={clearOfflineStreams}
       />
       <SdpViewer
         sdp={selectedStream?.sdpContent || null}
