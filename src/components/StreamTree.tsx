@@ -41,6 +41,21 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     return "partial";
   };
 
+  const getStatusClasses = (status: string, isStream: boolean) => {
+    switch (status) {
+      case "online":
+        return `bg-green-500 shadow-[0_0_8px_#22c55e] ${isStream ? "animate-pulse" : ""}`;
+      case "offline":
+        return "bg-red-500 shadow-[0_0_8px_#ef4444]";
+      case "standby":
+        return "bg-orange-500 shadow-[0_0_8px_#f97316]";
+      case "partial":
+        return "bg-orange-500 shadow-[0_0_8px_#f97316] animate-blink";
+      default:
+        return "bg-neutral-600 opacity-50";
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-72 lg:w-80 shrink-0">
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
@@ -69,12 +84,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           devices.map((device) => {
             const isExpanded = expandedDevices.includes(device.ip);
             const status = getDeviceStatus(device);
-            
-            let statusClass = "bg-neutral-600 opacity-50";
-            if (status === "standby") statusClass = "bg-orange-500";
-            if (status === "online") statusClass = "bg-green-500";
-            if (status === "offline") statusClass = "bg-red-500";
-            if (status === "partial") statusClass = "bg-orange-500 animate-blink";
+            const statusClass = getStatusClasses(status, false);
 
             return (
               <div key={device.ip} className="border-b border-neutral-800/50">
@@ -99,11 +109,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   <div className="space-y-0 bg-black/10">
                     {device.streams.sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
                       const streamStatus = getStreamStatus(stream);
-                      
-                      let streamStatusClass = "bg-neutral-600 opacity-50";
-                      if (streamStatus === "standby") streamStatusClass = "bg-orange-500";
-                      if (streamStatus === "online") streamStatusClass = "bg-green-500 animate-pulse";
-                      if (streamStatus === "offline") streamStatusClass = "bg-red-500";
+                      const streamStatusClass = getStatusClasses(streamStatus, true);
 
                       return (
                         <button
