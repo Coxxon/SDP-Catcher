@@ -1,18 +1,18 @@
 mod manufacturer;
 
 use serde::Serialize;
-use std::net::{UdpSocket, Ipv4Addr};
-use std::sync::{Arc, Mutex};
+use std::net::{Ipv4Addr, UdpSocket};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
 
-use std::collections::HashMap;
 use manufacturer::identify_manufacturer;
-use pnet::datalink::{self, Channel, NetworkInterface as PnetInterface};
-use pnet::packet::ethernet::{EthernetPacket, EtherTypes};
+use pnet::datalink::{self, Channel};
+use pnet::packet::ethernet::{EtherTypes, EthernetPacket};
 use pnet::packet::Packet;
+use std::collections::HashMap;
 
 #[derive(Serialize)]
 pub struct NetworkInterface {
@@ -50,20 +50,18 @@ pub struct AppState {
 
 fn get_mac_from_arp(ip: &str) -> (String, String) {
     // We use a global scan 'arp -a' for maximum reliability across Windows versions
-    let output = std::process::Command::new("arp")
-        .arg("-a")
-        .output();
+    let output = std::process::Command::new("arp").arg("-a").output();
 
     if let Ok(out) = output {
         let stdout = String::from_utf8_lossy(&out.stdout);
         for line in stdout.lines() {
             let parts: Vec<&str> = line.split_whitespace().collect();
-            
+
             // Standard Windows ARP output has IP at index 0 and MAC at index 1
             if parts.len() >= 2 {
                 let entry_ip = parts[0];
                 let entry_mac = parts[1];
-                
+
                 // Strict IP match
                 if entry_ip == ip {
                     let mac = entry_mac.replace("-", ":").to_uppercase();
@@ -74,7 +72,7 @@ fn get_mac_from_arp(ip: &str) -> (String, String) {
             }
         }
     }
-    
+
     // Diagnostic log for unreachable devices
     println!("⚠️ [ARP] No entry found in system table for IP {}", ip);
     ("Unknown".to_string(), "Unknown".to_string())
@@ -84,15 +82,17 @@ fn get_mac_from_arp(ip: &str) -> (String, String) {
 fn get_network_interfaces() -> Vec<NetworkInterface> {
     use std::collections::HashMap;
     let mut interfaces_map: HashMap<String, NetworkInterface> = HashMap::new();
-    
+
     for iface in netdev::get_interfaces() {
-        if iface.is_loopback() { continue; }
+        if iface.is_loopback() {
+            continue;
+        }
         let name = iface.friendly_name.clone().unwrap_or(iface.name.clone());
-        
+
         for ipv4 in iface.ipv4 {
             let ip = ipv4.addr.to_string();
             let mask = ipv4.netmask.to_string();
-            
+
             let new_iface = NetworkInterface {
                 name: name.clone(),
                 ip: ip.clone(),
@@ -109,7 +109,7 @@ fn get_network_interfaces() -> Vec<NetworkInterface> {
             }
         }
     }
-    
+
     let mut result: Vec<NetworkInterface> = interfaces_map.into_values().collect();
     result.sort_by(|a, b| a.name.cmp(&b.name));
     result
@@ -117,8 +117,11 @@ fn get_network_interfaces() -> Vec<NetworkInterface> {
 
 #[tauri::command]
 fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, AppState>) {
-    println!("🚀 Commande Rust reçue : Démarrage global SDP & PTP sur {} interfaces", interface_ips.len());
-    
+    println!(
+        "🚀 Commande Rust reçue : Démarrage global SDP & PTP sur {} interfaces",
+        interface_ips.len()
+    );
+
     let mut stop_flag_lock = state.sniffer_stop_flag.lock().unwrap();
     if let Some(old_flag) = stop_flag_lock.take() {
         old_flag.store(true, Ordering::Relaxed);
@@ -142,38 +145,48 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
 
         // Try binding SAP
         for _ in 0..5 {
-             if stop_flag.load(Ordering::Relaxed) { return; }
-             if let Ok(s) = UdpSocket::bind(("0.0.0.0", sap_port)) {
-                 s.set_read_timeout(Some(Duration::from_millis(500))).ok();
-                 for ip in &interface_ips {
-                     if let Ok(iface_addr) = ip.parse::<Ipv4Addr>() {
-                         s.join_multicast_v4(&sap_addr, &iface_addr).ok();
-                     }
-                 }
-                 sap_socket = Some(s);
-                 break;
-             }
-             thread::sleep(Duration::from_secs(1));
+            if stop_flag.load(Ordering::Relaxed) {
+                return;
+            }
+            if let Ok(s) = UdpSocket::bind(("0.0.0.0", sap_port)) {
+                s.set_read_timeout(Some(Duration::from_millis(500))).ok();
+                for ip in &interface_ips {
+                    if let Ok(iface_addr) = ip.parse::<Ipv4Addr>() {
+                        s.join_multicast_v4(&sap_addr, &iface_addr).ok();
+                    }
+                }
+                sap_socket = Some(s);
+                break;
+            }
+            thread::sleep(Duration::from_secs(1));
         }
 
         // Try binding PTP
         for _ in 0..5 {
-             if stop_flag.load(Ordering::Relaxed) { return; }
-             if let Ok(s) = UdpSocket::bind(("0.0.0.0", ptp_port)) {
-                 s.set_read_timeout(Some(Duration::from_millis(500))).ok();
-                 for ip in &interface_ips {
-                     if let Ok(iface_addr) = ip.parse::<Ipv4Addr>() {
-                         s.join_multicast_v4(&ptp_addr, &iface_addr).ok();
-                     }
-                 }
-                 ptp_socket = Some(s);
-                 break;
-             }
-             thread::sleep(Duration::from_secs(1));
+            if stop_flag.load(Ordering::Relaxed) {
+                return;
+            }
+            if let Ok(s) = UdpSocket::bind(("0.0.0.0", ptp_port)) {
+                s.set_read_timeout(Some(Duration::from_millis(500))).ok();
+                for ip in &interface_ips {
+                    if let Ok(iface_addr) = ip.parse::<Ipv4Addr>() {
+                        s.join_multicast_v4(&ptp_addr, &iface_addr).ok();
+                    }
+                }
+                ptp_socket = Some(s);
+                break;
+            }
+            thread::sleep(Duration::from_secs(1));
         }
 
-        let sap_socket = match sap_socket { Some(s) => s, None => return };
-        let ptp_socket = match ptp_socket { Some(s) => s, None => return };
+        let sap_socket = match sap_socket {
+            Some(s) => s,
+            None => return,
+        };
+        let ptp_socket = match ptp_socket {
+            Some(s) => s,
+            None => return,
+        };
 
         // Spawn PTP thread with Gleaning
         let stop_flag_ptp = Arc::clone(&stop_flag);
@@ -185,52 +198,59 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                 if let Ok((size, src)) = ptp_socket.recv_from(&mut buf) {
                     let source_ip = src.ip().to_string();
                     let payload = &buf[..size];
-                    
+
                     // PTP Gleaning: Extract ClockIdentity from Announce (offset 20 in header)
-                    if payload.len() >= 44 && payload[0] & 0x0F == 0x0B { // Announce Check
+                    if payload.len() >= 44 && payload[0] & 0x0F == 0x0B {
+                        // Announce Check
                         let clock_id = &payload[20..28];
-                        let ptp_id = clock_id.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("-");
-                        
+                        let ptp_id = clock_id
+                            .iter()
+                            .map(|b| format!("{:02X}", b))
+                            .collect::<Vec<_>>()
+                            .join("-");
+
                         // Extract MAC from EUI-64 (00-11-22-FF-FE-33-44-55 -> 00:11:22:33:44:55)
-                        let mac = format!("{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}", 
-                            clock_id[0], clock_id[1], clock_id[2], 
-                            clock_id[5], clock_id[6], clock_id[7]
+                        let mac = format!(
+                            "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+                            clock_id[0],
+                            clock_id[1],
+                            clock_id[2],
+                            clock_id[5],
+                            clock_id[6],
+                            clock_id[7]
                         );
 
                         let mut table = discovery_ptp.lock().unwrap();
                         let mut updated = false;
 
-                        let mac_entry = table.entry(mac.clone()).or_insert(DeviceInfo {
-                            ip: source_ip.clone(),
-                            name: "---".to_string(),
-                        });
-                        if mac_entry.ip != source_ip {
-                            mac_entry.ip = source_ip.clone();
-                            updated = true;
+                        {
+                            let mac_entry = table.entry(mac.clone()).or_insert(DeviceInfo {
+                                ip: source_ip.clone(),
+                                name: "---".to_string(),
+                            });
+                            if mac_entry.ip != source_ip {
+                                mac_entry.ip = source_ip.clone();
+                                updated = true;
+                            }
                         }
 
-                        let ptp_entry = table.entry(ptp_id.clone()).or_insert(DeviceInfo {
-                            ip: source_ip.clone(),
-                            name: "---".to_string(),
-                        });
-                        if ptp_entry.ip != source_ip {
-                            ptp_entry.ip = source_ip.clone();
-                            updated = true;
+                        {
+                            let ptp_entry = table.entry(ptp_id.clone()).or_insert(DeviceInfo {
+                                ip: source_ip.clone(),
+                                name: "---".to_string(),
+                            });
+                            if ptp_entry.ip != source_ip {
+                                ptp_entry.ip = source_ip.clone();
+                                updated = true;
+                            }
                         }
 
                         if updated {
-                            app_ptp.emit("discovery-update", (mac.clone(), mac_entry.clone())).ok();
-                        }
-                    }
-
-                    let payload_str = String::from_utf8_lossy(payload);
-                    if payload_str.starts_with("PTP_MOCK|") {
-                        let parts: Vec<&str> = payload_str.split('|').collect();
-                        if parts.len() >= 3 {
-                            app_ptp.emit("ptp-clock-update", PtpPayload {
-                                name: parts[1].to_string(),
-                                ip: parts[2].to_string(),
-                            }).ok();
+                            if let Some(mac_entry) = table.get(&mac) {
+                                app_ptp
+                                    .emit("discovery-update", (mac.clone(), mac_entry.clone()))
+                                    .ok();
+                            }
                         }
                     }
                 }
@@ -246,8 +266,12 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
 
             thread::spawn(move || {
                 let interfaces = datalink::interfaces();
-                let interface = interfaces.into_iter()
-                    .find(|iface| iface.ips.iter().any(|ip_net| ip_net.ip().to_string() == target_ip));
+                let interface = interfaces.into_iter().find(|iface| {
+                    iface
+                        .ips
+                        .iter()
+                        .any(|ip_net| ip_net.ip().to_string() == target_ip)
+                });
 
                 if let Some(iface) = interface {
                     let (_, mut rx) = match datalink::channel(&iface, Default::default()) {
@@ -268,7 +292,9 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                     if entry.ip != ip || entry.name != name {
                                         entry.ip = ip;
                                         entry.name = name;
-                                        app_lldp.emit("discovery-update", (mac, entry.clone())).ok();
+                                        app_lldp
+                                            .emit("discovery-update", (mac, entry.clone()))
+                                            .ok();
                                     }
                                 }
                             }
@@ -294,7 +320,9 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                         for line in sdp_content.lines() {
                             if line.starts_with("o=") {
                                 let parts: Vec<&str> = line.split_whitespace().collect();
-                                if parts.len() >= 6 { origin_ip = parts[5].to_string(); }
+                                if parts.len() >= 6 {
+                                    origin_ip = parts[5].to_string();
+                                }
                             } else if line.starts_with("s=") {
                                 stream_name = line[2..].trim().to_string();
                             } else if line.starts_with("i=") {
@@ -303,32 +331,46 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                         }
 
                         // Use s= if available (best for broadcast streams), otherwise i=
-                        let best_name = if stream_name != "---" && !stream_name.is_empty() { stream_name } else { sap_name };
+                        let best_name = if stream_name != "---" && !stream_name.is_empty() {
+                            stream_name
+                        } else {
+                            sap_name
+                        };
 
                         let (mac, _oui) = get_mac_from_arp(&origin_ip);
-                        
+
                         if mac != "Unknown" {
                             let mut table = discovery_sap.lock().unwrap();
                             let entry = table.entry(mac.clone()).or_insert(DeviceInfo {
                                 ip: origin_ip.clone(),
                                 name: best_name.clone(),
                             });
-                            
-                            if entry.ip != origin_ip || (best_name != "---" && entry.name != best_name) {
+
+                            if entry.ip != origin_ip
+                                || (best_name != "---" && entry.name != best_name)
+                            {
                                 entry.ip = origin_ip.clone();
-                                if best_name != "---" { entry.name = best_name.clone(); }
-                                app.emit("discovery-update", (mac.clone(), entry.clone())).ok();
+                                if best_name != "---" {
+                                    entry.name = best_name.clone();
+                                }
+                                app.emit("discovery-update", (mac.clone(), entry.clone()))
+                                    .ok();
                             }
                         }
 
                         let mfr_enum = identify_manufacturer(&mac);
-                        app.emit("sdp-discovered", SdpPayload {
-                            source_ip: origin_ip,
-                            sdp_content: sdp_content.to_string(),
-                            mac,
-                            manufacturer: mfr_enum.to_string(),
-                            sap_timeout_ms: mfr_enum.default_timeout_ms(default_unknown_timeout_s),
-                        }).ok();
+                        app.emit(
+                            "sdp-discovered",
+                            SdpPayload {
+                                source_ip: origin_ip,
+                                sdp_content: sdp_content.to_string(),
+                                mac,
+                                manufacturer: mfr_enum.to_string(),
+                                sap_timeout_ms: mfr_enum
+                                    .default_timeout_ms(default_unknown_timeout_s),
+                            },
+                        )
+                        .ok();
                     }
                 }
             }
@@ -343,27 +385,45 @@ fn parse_lldp(packet: &[u8]) -> Option<(String, String, String)> {
     let mut mgmt_ip = String::new();
 
     while pos + 2 <= packet.len() {
-        let header = u16::from_be_bytes([packet[pos], packet[pos+1]]);
+        let header = u16::from_be_bytes([packet[pos], packet[pos + 1]]);
         let tlv_type = (header >> 9) as u8;
         let tlv_len = (header & 0x01FF) as usize;
         pos += 2;
-        if pos + tlv_len > packet.len() { break; }
-        
-        let value = &packet[pos..pos+tlv_len];
+        if pos + tlv_len > packet.len() {
+            break;
+        }
+
+        let value = &packet[pos..pos + tlv_len];
         match tlv_type {
-            1 => if tlv_len >= 7 && value[0] == 4 {
-                chassis_id = value[1..7].iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(":");
-            },
+            1 => {
+                if tlv_len >= 7 && value[0] == 4 {
+                    chassis_id = value[1..7]
+                        .iter()
+                        .map(|b| format!("{:02X}", b))
+                        .collect::<Vec<_>>()
+                        .join(":");
+                }
+            }
             5 => system_name = String::from_utf8_lossy(value).to_string(),
-            8 => if tlv_len >= 5 && value[1] == 1 {
-                mgmt_ip = value[2..6].iter().map(|b| b.to_string()).collect::<Vec<_>>().join(".");
-            },
+            8 => {
+                if tlv_len >= 5 && value[1] == 1 {
+                    mgmt_ip = value[2..6]
+                        .iter()
+                        .map(|b| b.to_string())
+                        .collect::<Vec<_>>()
+                        .join(".");
+                }
+            }
             0 => break,
             _ => {}
         }
         pos += tlv_len;
     }
-    if !chassis_id.is_empty() { Some((chassis_id, system_name, mgmt_ip)) } else { None }
+    if !chassis_id.is_empty() {
+        Some((chassis_id, system_name, mgmt_ip))
+    } else {
+        None
+    }
 }
 
 #[tauri::command]
@@ -383,21 +443,34 @@ fn set_unknown_timeout(seconds: u64, state: State<'_, AppState>) {
 }
 
 #[tauri::command]
-fn set_network_ip(interface_name: String, is_dhcp: bool, ip: Option<String>, mask: Option<String>) -> Result<String, String> {
+fn set_network_ip(
+    interface_name: String,
+    is_dhcp: bool,
+    ip: Option<String>,
+    mask: Option<String>,
+) -> Result<String, String> {
     let mut cmd = std::process::Command::new("netsh");
     let mut args = vec!["interface", "ip", "set", "address", interface_name.as_str()];
     if is_dhcp {
         args.push("dhcp");
     } else {
         if let (Some(ip_addr), Some(mask_addr)) = (ip.as_deref(), mask.as_deref()) {
-            args.push("static"); args.push(ip_addr); args.push(mask_addr);
+            args.push("static");
+            args.push(ip_addr);
+            args.push(mask_addr);
         } else {
             return Err("IP and Mask are required".to_string());
         }
     }
     cmd.args(args);
     match cmd.output() {
-        Ok(out) => if out.status.success() { Ok("OK".to_string()) } else { Err(String::from_utf8_lossy(&out.stderr).to_string()) },
+        Ok(out) => {
+            if out.status.success() {
+                Ok("OK".to_string())
+            } else {
+                Err(String::from_utf8_lossy(&out.stderr).to_string())
+            }
+        }
         Err(e) => Err(e.to_string()),
     }
 }
@@ -405,29 +478,8 @@ fn set_network_ip(interface_name: String, is_dhcp: bool, ip: Option<String>, mas
 #[tauri::command]
 fn get_arp_table(state: State<'_, AppState>) -> HashMap<String, DeviceInfo> {
     let mut table = state.discovery_table.lock().unwrap().clone();
-    
-    // Inject mock entries for simulator (standard PTP IDs -> IP + Name)
-    let mock_names = vec!["GM-Clock-Antenna", "Lawo-Core-Primary", "Axia-Console-StudioA", "Riedel-Switch-01", "Yamaha-Rivage-FOH"];
-    for i in 121..170 {
-        let mac = format!("00:11:22:88:88:{:02X}", i);
-        let ip = format!("192.168.1.{}", i);
-        let name = mock_names[i % mock_names.len()].to_string();
-        table.insert(mac, DeviceInfo { ip, name });
-    }
 
-    // Specialized PTP Topology Mocks (Riedel/Luminex)
-    table.insert("00:10:5F:AA:BB:CC".to_string(), DeviceInfo { 
-        ip: "192.168.1.10".to_string(), 
-        name: "Riedel-Artist-GMC".to_string() 
-    });
-    table.insert("00:D0:BB:11:22:33".to_string(), DeviceInfo { 
-        ip: "192.168.1.50".to_string(), 
-        name: "Luminex-BC-Switch".to_string() 
-    });
-
-    let output = std::process::Command::new("arp")
-        .arg("-a")
-        .output();
+    let output = std::process::Command::new("arp").arg("-a").output();
 
     if let Ok(out) = output {
         let stdout = String::from_utf8_lossy(&out.stdout);
@@ -452,16 +504,16 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .manage(AppState { 
+        .manage(AppState {
             sniffer_stop_flag: Mutex::new(None),
             default_unknown_timeout_s: Mutex::new(60),
             discovery_table: Arc::new(Mutex::new(HashMap::new())),
         })
         .invoke_handler(tauri::generate_handler![
-            get_network_interfaces, 
+            get_network_interfaces,
             get_arp_table,
-            start_sniffing, 
-            stop_sniffing, 
+            start_sniffing,
+            stop_sniffing,
             set_network_ip,
             set_unknown_timeout
         ])

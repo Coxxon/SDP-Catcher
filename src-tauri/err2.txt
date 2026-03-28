@@ -1,0 +1,24 @@
+    Checking tauri-app v0.1.0 (D:\Utilisateur\Documents\Sites_web\SDP Catcher\src-tauri)
+warning: unused import: `NetworkInterface as PnetInterface`
+  --> src\lib.rs:12:37
+   |
+12 | use pnet::datalink::{self, Channel, NetworkInterface as PnetInterface};
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0499]: cannot borrow `table` as mutable more than once at a time
+   --> src\lib.rs:235:41
+    |
+226 |                         let mac_entry = table.entry(mac.clone()).or_insert(DeviceInfo {
+    |                                         ----- first mutable borrow occurs here
+...
+235 |                         let ptp_entry = table.entry(ptp_id.clone()).or_insert(DeviceInfo {
+    |                                         ^^^^^ second mutable borrow occurs here
+...
+246 |                                 .emit("discovery-update", (mac.clone(), mac_entry.clone()))
+    |                                                                         --------- first borrow later used here
+
+For more information about this error, try `rustc --explain E0499`.
+warning: `tauri-app` (lib) generated 1 warning
+error: could not compile `tauri-app` (lib) due to 1 previous error; 1 warning emitted

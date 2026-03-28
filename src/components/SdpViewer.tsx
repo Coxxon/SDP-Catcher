@@ -76,7 +76,7 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
     let samplingRate = "---";
     let nbChannels = "---";
     let ptime = "---";
-    let masterClock = "Internal";
+    let masterClock = "Unknown";
 
     for (const line of lines) {
       const lowerLine = line.toLowerCase();
