@@ -47,6 +47,8 @@ fn get_network_interfaces() -> Vec<NetworkInterface> {
 
 #[tauri::command]
 fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppState>) {
+    println!("🚀 Commande Rust reçue : Démarrage sur {}", interface_ip);
+    
     // 1. Stop existing thread if any
     let mut stop_flag_lock = state.sniffer_stop_flag.lock().unwrap();
     if let Some(old_flag) = stop_flag_lock.take() {
@@ -61,7 +63,7 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
     // 3. Start listening in a separate thread
     thread::spawn(move || {
         let sap_addr = Ipv4Addr::new(239, 255, 255, 255);
-        let bind_addr = Ipv4Addr::new(0, 0, 0, 0); 
+        let bind_addr = Ipv4Addr::new(0, 0, 0, 0);
         let iface_addr: Ipv4Addr = interface_ip.parse().expect("Invalid interface IP");
         let port = 9875;
 
@@ -75,7 +77,7 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
         };
 
         socket.set_read_timeout(Some(Duration::from_millis(200))).ok();
-        
+
         if let Err(e) = socket.join_multicast_v4(&sap_addr, &iface_addr) {
             eprintln!("Failed to join multicast group: {}", e);
             return;
@@ -85,11 +87,13 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
         while !stop_flag.load(Ordering::Relaxed) {
             match socket.recv_from(&mut buf) {
                 Ok((size, src)) => {
+                    println!("📦 Paquet UDP reçu ! (taille: {})", size);
                     let payload = &buf[..size];
-                    
+
                     // SAP packets contain a binary header, search for "v=0" which starts the SDP
                     if let Some(pos) = payload.windows(3).position(|w| w == b"v=0") {
                         if let Ok(sdp_content) = std::str::from_utf8(&payload[pos..]) {
+                            println!("✅ SDP parsé avec succès, émission IPC en cours...");
                             app.emit("sdp-discovered", SdpPayload {
                                 source_ip: src.ip().to_string(),
                                 sdp_content: sdp_content.to_string(),

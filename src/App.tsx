@@ -47,6 +47,7 @@ function App() {
 
   useEffect(() => {
     const unlisten = listen<SdpDiscoveredEvent>("sdp-discovered", (event) => {
+      console.log("📥 Évènement IPC reçu depuis Rust :", event.payload);
       const { source_ip, sdp_content } = event.payload;
       const { name, multicastIp } = parseSdp(sdp_content);
 
