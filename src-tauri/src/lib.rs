@@ -7,7 +7,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, State};
-use manufacturer::{identify_manufacturer, Manufacturer};
+use manufacturer::identify_manufacturer;
 
 #[derive(Serialize)]
 pub struct NetworkInterface {
@@ -159,7 +159,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                 if let Some(pos) = payload.windows(3).position(|w| w == b"v=0") {
                     if let Ok(sdp_content) = std::str::from_utf8(&payload[pos..]) {
                         let source_ip = src.ip().to_string();
-                        let (mac, oui) = get_mac_from_arp(&source_ip);
+                        let (mac, _oui) = get_mac_from_arp(&source_ip);
                         let mfr_enum = identify_manufacturer(&mac);
                         let mfr_name = mfr_enum.to_string();
                         let timeout = mfr_enum.default_timeout_ms(default_unknown_timeout_s);
