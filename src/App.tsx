@@ -54,6 +54,7 @@ function App() {
   const [lastPtpInfo, setLastPtpInfo] = useState({ ptp_id: '---', name: '---', ip: '---' });
   const [lastPtpUpdate, setLastPtpUpdate] = useState(0);
   const [isPtpActive, setIsPtpActive] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string; sessionInfo: string | null } => {
     const lines = raw.split(/\r?\n/);
@@ -189,10 +190,17 @@ function App() {
     });
 
     const unlistenPtp = listen<{ptp_id: string, name: string, ip: string}>("ptp-clock-update", (event) => {
+      const { ptp_id, name, ip } = event.payload;
+      
+      // Trigger orange transition on GMC switch
+      if (lastPtpInfo.ptp_id !== '---' && ptp_id !== lastPtpInfo.ptp_id) {
+        setIsTransitioning(true);
+        setTimeout(() => setIsTransitioning(false), 1500);
+      }
+
       setLastPtpInfo(event.payload);
       setLastPtpUpdate(Date.now());
       setIsPtpActive(true);
-      const { name, ip } = event.payload;
       if (name !== '---') {
         setMasterClocks([{ name, ip }]);
       }
@@ -296,15 +304,6 @@ function App() {
       })()
     : devices;
 
-  const activeClock = activeIp && interfaces.length > 0
-    ? (() => {
-        const activeIface = interfaces.find(i => i.ip === activeIp);
-        if (!activeIface) return null;
-        const m = ipToLong(activeIface.mask);
-        const target = (ipToLong(activeIface.ip) & m) >>> 0;
-        return masterClocks.find(c => ((ipToLong(c.ip) & m) >>> 0) === target);
-      })()
-    : null;
 
   return (
     <main className="flex flex-col h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none">
@@ -335,28 +334,22 @@ function App() {
       
       {/* Fixed Footer Bar */}
       <footer className="h-7 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between px-4 z-50 shrink-0">
-        <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${activeClock ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-500 animate-pulse'}`} />
-            <span className="text-[10px] text-zinc-500 font-bold tracking-tight uppercase">
-                PTPv2 Master Clock: 
-                <span className={activeClock ? 'text-zinc-300 ml-1' : 'text-zinc-600 ml-1 italic opacity-50'}>
-                    {activeClock ? `${activeClock.name} (${activeClock.ip})` : '--'}
-                </span>
+        <div className="flex items-center gap-6">
+          {/* GMC Footer */}
+          <div className="flex items-center gap-2 text-[10px] font-bold">
+            <div className={`w-1.5 h-1.5 rounded-full transition-all duration-300 
+                            ${isTransitioning ? 'bg-orange-500 animate-pulse shadow-[0_0_10px_rgba(249,115,22,0.8)]' : 
+                              isPtpActive ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 
+                              'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`} />
+            <span className="text-neutral-500 uppercase tracking-widest">PTPV2 GMC:</span>
+            <span 
+              onClick={isPtpActive ? cycleFooterDisplayMode : undefined}
+              className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer underline decoration-dotted decoration-neutral-600' : 'text-neutral-600 italic cursor-not-allowed'}`}
+              title={isPtpActive ? `Mode: ${footerDisplayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)` : "PTP Clock Offline"}
+            >
+              {isPtpActive ? getFooterGmcText() : "Disconnected"}
             </span>
-        </div>
-
-        {/* GMC Footer */}
-        <div className="flex items-center gap-2 text-[10px] font-bold">
-          <div className={`w-1.5 h-1.5 rounded-full transition-all duration-500 
-                          ${isPtpActive ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]'}`} />
-          <span className="text-neutral-500 uppercase tracking-widest">PTPV2 GMC:</span>
-          <span 
-            onClick={isPtpActive ? cycleFooterDisplayMode : undefined}
-            className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer underline decoration-dotted decoration-neutral-600' : 'text-neutral-600 italic cursor-not-allowed'}`}
-            title={isPtpActive ? `Mode: ${footerDisplayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)` : "PTP Clock Offline"}
-          >
-            {isPtpActive ? getFooterGmcText() : "Disconnected"}
-          </span>
+          </div>
         </div>
 
         <div className="flex items-center gap-3 ml-auto">

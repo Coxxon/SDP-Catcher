@@ -55,7 +55,7 @@ const manufacturers = [
 ];
 
 // Topologie PTP Spécifique
-const G_RIEDEL_ID = '00-10-5f-ff-fe-aa-bb-cc';
+const G_RIEDEL_ID = '00-1A-CA-FF-FE-AA-BB-CC';
 const G_LUMINEX_ID = '00-d0-bb-ff-fe-11-22-33';
 
 // Génération automatique du tableau devices
