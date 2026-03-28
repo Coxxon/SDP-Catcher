@@ -55,6 +55,7 @@ export function InterfaceList({
     onRefreshInterfaces,
     onStartSniffing
 }: InterfaceListProps) {
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [hiddenInterfaces, setHiddenInterfaces] = useState<string[]>(() => {
     const saved = localStorage.getItem("hiddenInterfaces");
@@ -136,31 +137,39 @@ export function InterfaceList({
   };
 
   return (
-    <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-[255px] min-w-[255px] max-w-[255px] shrink-0">
-      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
-        <div className="flex items-center gap-2">
+    <div className={`flex flex-col h-full bg-neutral-900 border-r border-neutral-700 transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${isCollapsed ? 'w-16 min-w-[4rem] max-w-[4rem]' : 'w-[16rem] min-w-[16rem] max-w-[16rem]'}`}>
+      <div className={`bg-neutral-800 border-b border-neutral-700 h-14 flex items-center px-3 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+        <div 
+          className="flex items-center gap-2 cursor-pointer hover:bg-neutral-700 p-1.5 -ml-1.5 rounded transition-colors truncate"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          title={isCollapsed ? "Expand Interfaces" : "Collapse Interfaces"}
+        >
           <Network 
             size={14} 
-            className={isSniffing ? "text-green-500 animate-pulse" : (activeIp ? "text-amber-500" : "text-neutral-400")} 
+            className={`shrink-0 ${isSniffing ? "text-green-500 animate-pulse" : (activeIp ? "text-amber-500" : "text-neutral-400")}`} 
           />
-          <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Interfaces</h2>
+          {!isCollapsed && <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight truncate">Interfaces</h2>}
         </div>
-        <div className="flex items-center gap-1">
-          <button
-            onClick={onRefreshInterfaces}
-            className="p-1.5 rounded-md hover:bg-neutral-700 transition-all text-neutral-500"
-          >
-            <RefreshCw size={14} />
-          </button>
-          <button
-            onClick={() => setIsEditMode(!isEditMode)}
-            className={`p-1.5 rounded-md hover:bg-neutral-700 transition-all ${
-              isEditMode ? "text-blue-400 bg-neutral-700" : "text-neutral-500"
-            }`}
-          >
-            <Settings size={14} />
-          </button>
-        </div>
+        {!isCollapsed && (
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={onRefreshInterfaces}
+              className="p-1.5 rounded-md hover:bg-neutral-700 transition-all text-neutral-500 hover:text-white"
+              title="Refresh Network Interfaces"
+            >
+              <RefreshCw size={14} />
+            </button>
+            <button
+              onClick={() => setIsEditMode(!isEditMode)}
+              className={`p-1.5 rounded-md hover:bg-neutral-700 transition-all ${
+                isEditMode ? "text-blue-400 bg-neutral-700" : "text-neutral-500 hover:text-white"
+              }`}
+              title="Interface Configuration"
+            >
+              <Settings size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -274,40 +283,51 @@ export function InterfaceList({
                 <button
                   key={iface.ip}
                   onClick={() => handleClick(iface.ip)}
-                  className={`w-full text-left px-3 py-2 transition-all border-b group relative flex flex-col gap-0.5 ${
+                  className={`w-full ${isCollapsed ? 'text-center' : 'text-left'} px-3 py-2 transition-all border-b group relative flex flex-col gap-0.5 overflow-hidden ${
                     isActive
                       ? "bg-neutral-800 text-white border-neutral-700"
                       : "text-neutral-400 hover:bg-neutral-800/40 border-neutral-800/50"
                   } ${isHidden ? "opacity-30" : "opacity-100"} select-none`}
+                  title={isCollapsed ? `${iface.name}\n${iface.ip}/${cidr}` : undefined}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
-                          {iface.name}
+                  {isCollapsed ? (
+                    <div className="flex flex-col items-center justify-center py-1 w-full">
+                        <span className={`text-[10px] font-bold text-center tracking-wider px-1 truncate w-full ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
+                          {iface.name.substring(0, 3).toUpperCase()}
                         </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      {!isEditMode && (
-                        <div 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            handleDoubleClick(iface); 
-                          }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-neutral-600 text-neutral-400 hover:text-white transition-all cursor-pointer"
-                        >
-                          <Pencil size={12} />
+                  ) : (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
+                              {iface.name}
+                            </span>
                         </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
-                    <span>{iface.ip} <span>/{cidr}</span></span>
-                    {streamCount > 0 && (
-                        <span className="pr-1">
-                            {streamCount} {streamCount === 1 ? 'stream' : 'streams'}
-                        </span>
-                    )}
-                  </div>
+                        <div className="flex items-center gap-1.5">
+                          {!isEditMode && (
+                            <div 
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                handleDoubleClick(iface); 
+                              }}
+                              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-neutral-600 text-neutral-400 hover:text-white transition-all cursor-pointer shrink-0"
+                            >
+                              <Pencil size={12} />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
+                        <span className="truncate">{iface.ip} <span>/{cidr}</span></span>
+                        {streamCount > 0 && (
+                            <span className="pr-1 shrink-0">
+                                {streamCount} {streamCount === 1 ? 'stream' : 'streams'}
+                            </span>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </button>
               );
             })

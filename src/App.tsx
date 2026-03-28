@@ -338,7 +338,7 @@ function App() {
   return (
     <main 
       className="flex flex-col h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none"
-      style={{ zoom: zoomLevel } as any}
+      style={{ fontSize: `${zoomLevel * 100}%` }}
     >
       {/* Dynamic Workspace Container */}
       <div className="flex flex-1 overflow-x-auto overflow-y-hidden">
@@ -389,13 +389,13 @@ function App() {
             {/* Zoom Controls */}
             <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded px-1 h-4.5">
               <button 
-                 onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
+                 onClick={() => setZoomLevel(prev => Math.max(1.0, prev - 0.1))}
                  className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0"
                  title="Zoom Out"
               >-</button>
               <span className="text-[9px] text-zinc-400 font-mono w-6 text-center select-none">{Math.round(zoomLevel * 100)}%</span>
               <button 
-                 onClick={() => setZoomLevel(prev => Math.min(2.0, prev + 0.1))}
+                 onClick={() => setZoomLevel(prev => Math.min(1.3, prev + 0.1))}
                  className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0 pb-0.5"
                  title="Zoom In"
               >+</button>
