@@ -41,16 +41,16 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     return "partial";
   };
 
-  const getStatusClasses = (status: string, isStream: boolean) => {
+  const getStatusClasses = (status: string) => {
     switch (status) {
       case "online":
-        return `bg-green-500 shadow-[0_0_8px_#22c55e] ${isStream ? "animate-pulse" : ""}`;
+        return "bg-green-500 shadow-[0_0_3px_rgba(34,197,94,0.3)]";
       case "offline":
-        return "bg-red-500 shadow-[0_0_8px_#ef4444]";
+        return "bg-red-500 shadow-[0_0_3px_rgba(239,68,68,0.3)]";
       case "standby":
-        return "bg-orange-500 shadow-[0_0_8px_#f97316]";
+        return "bg-orange-500 shadow-[0_0_3px_rgba(249,115,22,0.3)]";
       case "partial":
-        return "bg-orange-500 shadow-[0_0_8px_#f97316] animate-blink";
+        return "bg-orange-500 shadow-[0_0_3px_rgba(249,115,22,0.3)] animate-blink";
       default:
         return "bg-neutral-600 opacity-50";
     }
@@ -84,7 +84,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           devices.map((device) => {
             const isExpanded = expandedDevices.includes(device.ip);
             const status = getDeviceStatus(device);
-            const statusClass = getStatusClasses(status, false);
+            const statusClass = getStatusClasses(status);
 
             return (
               <div key={device.ip} className="border-b border-neutral-800/50">
@@ -95,7 +95,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
                     <ChevronRight size={14} className="text-neutral-600" />
                   </div>
-                  <div className="relative">
+                  <div className="relative pointer-events-none">
                     <HardDrive size={14} className="text-neutral-500 group-hover:text-neutral-300" />
                     <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${statusClass}`} />
                   </div>
@@ -109,7 +109,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   <div className="space-y-0 bg-black/10">
                     {device.streams.sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
                       const streamStatus = getStreamStatus(stream);
-                      const streamStatusClass = getStatusClasses(streamStatus, true);
+                      const streamStatusClass = getStatusClasses(streamStatus);
 
                       return (
                         <button
