@@ -17,6 +17,11 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
     );
   };
 
+  const handleStreamClick = (stream: Stream) => {
+    console.log("Stream cliqué :", stream.name);
+    onStreamSelect(stream);
+  };
+
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-72 lg:w-80 shrink-0">
       <div className="bg-neutral-800 p-3 border-b border-neutral-700 flex items-center justify-between">
@@ -32,7 +37,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
       <div className="flex-1 overflow-y-auto p-0 space-y-0">
         {devices.length === 0 ? (
           <div className="p-4 text-center text-neutral-600 text-xs italic">
-            Scanning...
+            Scanning for SAP...
           </div>
         ) : (
           devices.map((device) => {
@@ -41,7 +46,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
               <div key={device.ip} className="border-b border-neutral-800/50">
                 <button
                   onClick={() => toggleDevice(device.ip)}
-                  className="w-full flex items-center gap-2 px-3 py-2 bg-neutral-800/30 hover:bg-neutral-800 transition-all group"
+                  className="w-full flex items-center gap-2 px-3 py-2 bg-neutral-800/20 hover:bg-neutral-800 transition-all group"
                 >
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
                     <ChevronRight size={14} className="text-neutral-600" />
@@ -49,23 +54,28 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId }: Stream
                   <Monitor size={14} className="text-neutral-500 group-hover:text-neutral-300" />
                   <div className="flex flex-col items-start leading-none min-w-0">
                     <span className="text-[11px] font-bold text-neutral-200 truncate w-full tracking-tight">{device.name}</span>
-                    <span className="text-[9px] text-neutral-600 font-mono italic">{device.ip}</span>
+                    <span className="text-xs text-zinc-500 font-mono mt-0.5">{device.ip}</span>
                   </div>
                 </button>
 
                 {isExpanded && (
-                  <div className="space-y-0">
+                  <div className="space-y-0 bg-black/10">
                     {device.streams.sort((a, b) => a.name.localeCompare(b.name)).map((stream) => (
                       <button
                         key={stream.id}
-                        onClick={() => onStreamSelect(stream)}
-                        className={`w-full flex items-center gap-4 py-1.5 px-6 text-[12px] transition-all border-b border-neutral-800/30 ${
+                        onClick={() => handleStreamClick(stream)}
+                        className={`w-full flex flex-col items-start py-2 px-8 text-[12px] transition-all border-b border-neutral-800/30 ${
                           selectedStreamId === stream.id
                             ? "bg-neutral-700 text-white font-bold"
-                            : "text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800"
+                            : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800"
                         }`}
                       >
-                        <span className="truncate flex-1 text-left">{stream.name}</span>
+                         <span className={`truncate w-full text-left ${selectedStreamId === stream.id ? 'text-white' : 'text-zinc-300'}`}>
+                           {stream.name}
+                         </span>
+                         <span className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                           {stream.multicastIp}
+                         </span>
                       </button>
                     ))}
                   </div>

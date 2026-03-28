@@ -22,6 +22,11 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
       .catch(console.error);
   }, []);
 
+  const handleClick = (ip: string) => {
+    console.log("Interface sélectionnée :", ip);
+    onInterfaceSelect(ip);
+  };
+
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-64 lg:w-72 shrink-0">
       <div className="bg-neutral-800 p-3 border-b border-neutral-700 flex items-center justify-between">
@@ -42,7 +47,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
             return (
               <button
                 key={iface.ip}
-                onClick={() => onInterfaceSelect(iface.ip)}
+                onClick={() => handleClick(iface.ip)}
                 className={`w-full text-left px-3 py-2 transition-all border-b border-neutral-800/50 flex flex-col gap-0.5 ${
                   isActive
                     ? "bg-neutral-700 text-white"
@@ -50,12 +55,14 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold truncate tracking-tight">{iface.name}</span>
+                  <span className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'}`}>
+                    {iface.name}
+                  </span>
                   {isActive && <Activity size={10} className="text-blue-400 animate-pulse" />}
                 </div>
-                <div className="text-[10px] font-mono opacity-50 flex gap-2">
+                <div className="text-xs text-zinc-500 font-mono flex gap-2">
                   <span>{iface.ip}</span>
-                  <span>{iface.mask}</span>
+                  <span className="opacity-40">{iface.mask}</span>
                 </div>
               </button>
             );

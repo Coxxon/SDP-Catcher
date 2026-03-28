@@ -66,7 +66,7 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-[#1E1E1E] p-4 font-mono text-sm text-neutral-300">
+      <div className="flex-1 overflow-auto bg-[#1E1E1E] p-4 font-mono text-sm text-neutral-300 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-neutral-900">
         {sdp ? (
           <div className="max-w-none">
              <div className="flex items-center gap-2 mb-4 opacity-50">
@@ -74,10 +74,10 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
                <span className="text-[10px] uppercase tracking-widest">{sourceIp}</span>
              </div>
              
-             <pre className="leading-relaxed selection:bg-neutral-700">
+             <pre className="leading-relaxed selection:bg-neutral-700 overflow-visible whitespace-pre-wrap">
                 {sdp.split(/\r?\n/).map((line, i) => (
-                  <div key={i} className="flex gap-4 hover:bg-neutral-800/20 -mx-4 px-4 transition-colors">
-                    <span className="w-5 text-right text-neutral-700 select-none font-bold text-[10px]">{i + 1}</span>
+                  <div key={i} className="flex gap-4 hover:bg-neutral-800/10 -mx-4 px-4 transition-colors">
+                    <span className="w-5 text-right text-neutral-700 select-none font-bold text-[10px] leading-tight">{i + 1}</span>
                     <span className="break-all">{line}</span>
                   </div>
                 ))}
