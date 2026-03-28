@@ -128,9 +128,9 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   </div>
 
                   {/* Background Ghost Logo */}
-                  {manufacturerLogos[device.manufacturer] && (
+                  {manufacturerLogos[device.manufacturer.split(' (')[0]] && (
                     <div className="absolute top-0 right-0 h-full w-24 opacity-[0.40] text-neutral-600 pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden">
-                      {manufacturerLogos[device.manufacturer]}
+                      {manufacturerLogos[device.manufacturer.split(' (')[0]]}
                     </div>
                   )}
                 </button>
@@ -142,7 +142,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                       <div className="flex items-center justify-between">
                         <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Manufacturer</span>
                         <span className={`text-[10px] ${device.manufacturer === 'Unknown' ? 'text-neutral-600 italic' : 'text-neutral-200 font-bold'}`}>
-                          {device.manufacturer}
+                          {device.manufacturer.split(' (')[0]}
                           {device.mac !== 'Unknown' && ` (${device.mac.split(':').slice(0, 3).join(':')})`}
                           {device.manufacturer === 'Unknown' && ' (fallback)'}
                         </span>
