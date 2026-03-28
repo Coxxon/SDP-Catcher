@@ -4,37 +4,40 @@ const MULTICAST_ADDR = '239.255.255.255';
 const PTP_MULTICAST_ADDR = '224.0.1.129';
 const PORT = 9875;
 const PTP_PORT = 320;
-const INTERVAL = 2000;
 
 const server = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 
-// Définition de 3 appareils avec leurs streams
 const devices = [
   {
-    name: "Console_FOH",
-    ip: "192.168.1.101",
+    name: "Riedel_Bolero",
+    ip: "192.168.1.10",
+    interval: 5000,
     streams: [
-      { name: "Main_L", multicast: "239.69.10.1" },
-      { name: "Main_R", multicast: "239.69.10.2" },
-      { name: "Sub_Basse", multicast: "239.69.10.3" },
+      { name: "Bolero_Beltpacks", multicast: "239.69.10.1" },
     ]
   },
   {
-    name: "Stagebox_A",
-    ip: "192.168.1.102",
+    name: "Yamaha_CL5",
+    ip: "192.168.1.20",
+    interval: 30000,
     streams: [
-      { name: "Mic_1-4", multicast: "239.69.20.1" },
-      { name: "Mic_5-8", multicast: "239.69.20.2" },
-      { name: "Line_In", multicast: "239.69.20.3" },
-      { name: "Returns", multicast: "239.69.20.4" },
+      { name: "FOH_Matrix_1-2", multicast: "239.69.20.1" },
     ]
   },
   {
-    name: "Intercom_Sys",
-    ip: "192.168.1.103",
+    name: "Merging_Horus",
+    ip: "192.168.1.30",
+    interval: 30000,
     streams: [
-      { name: "Director_Ch", multicast: "239.69.30.1" },
-      { name: "Camera_Op", multicast: "239.69.30.2" },
+      { name: "Mic_Preamp_1-8", multicast: "239.69.30.1" },
+    ]
+  },
+  {
+    name: "Dante_AVIO",
+    ip: "192.168.1.40",
+    interval: 30000,
+    streams: [
+      { name: "Analog_Output", multicast: "239.69.40.1" },
     ]
   }
 ];
@@ -61,30 +64,29 @@ server.on('error', (err) => {
 
 server.on('listening', () => {
   const address = server.address();
-  console.log(`Simulator listening on ${address.address}:${address.port}`);
-  console.log(`Sending multi-device multicast packets to ${MULTICAST_ADDR}:${PORT}...`);
-});
-
-const sendPackets = () => {
+  console.log(`🚀 Multi-Vendor Simulator active on ${address.address}:${address.port}`);
+  console.log(`📡 Simulating ${devices.length} distinct AES67 endpoints...`);
+  
+  // Setup independent loops
   devices.forEach(device => {
-    device.streams.forEach(stream => {
-      const payload = generatePayload(device.name, device.ip, stream.name, stream.multicast);
-      server.send(payload, 0, payload.length, PORT, MULTICAST_ADDR, (err) => {
-        if (err) console.error(`Error sending ${stream.name}:`, err);
-      });
-    });
+    setInterval(() => {
+        device.streams.forEach(stream => {
+            const payload = generatePayload(device.name, device.ip, stream.name, stream.multicast);
+            server.send(payload, 0, payload.length, PORT, MULTICAST_ADDR, (err) => {
+                if (err) console.error(`Error sending ${stream.name}:`, err);
+            });
+        });
+        console.log(`[${new Date().toLocaleTimeString()}] Sent ${device.name} SAP heartbeats (${device.interval}ms)`);
+    }, device.interval);
   });
 
-  // Envoi d'un Master Clock PTP simulé
-  const ptpPayload = Buffer.from('PTP_MOCK|Grandmaster_StudioA|192.168.1.100');
-  server.send(ptpPayload, 0, ptpPayload.length, PTP_PORT, PTP_MULTICAST_ADDR, (err) => {
-    if (err) console.error(`Error sending PTP:`, err);
-  });
-
-  console.log(`[${new Date().toLocaleTimeString()}] Sent 9 SDP streams and 1 PTP Master Clock.`);
-};
+  // PTP Clock Heartbeat (Global)
+  setInterval(() => {
+    const ptpPayload = Buffer.from('PTP_MOCK|Grandmaster_StudioA|192.168.1.100');
+    server.send(ptpPayload, 0, ptpPayload.length, PTP_PORT, PTP_MULTICAST_ADDR);
+  }, 2000);
+});
 
 server.bind(() => {
   server.setBroadcast(true);
-  setInterval(sendPackets, INTERVAL);
 });

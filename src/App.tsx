@@ -289,19 +289,19 @@ function App() {
             </span>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 ml-auto">
             <div className="flex items-center gap-2">
                 <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-wider">Default SAP Timeout</span>
-                <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded px-1 h-5">
+                <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[36px]">
                     <input 
                         type="number" 
                         min="60"
                         max="300"
                         value={unknownTimeout}
                         onChange={(e) => handleTimeoutChange(e.target.value)}
-                        className="w-8 bg-transparent text-[10px] text-zinc-300 font-mono text-center focus:outline-none"
+                        className="w-5 bg-transparent text-[10px] text-zinc-300 font-mono text-center focus:outline-none appearance-none"
                     />
-                    <span className="text-[9px] text-zinc-600 font-bold">s</span>
+                    <span className="text-[9px] text-zinc-600 font-bold ml-0.5">s</span>
                 </div>
             </div>
         </div>
