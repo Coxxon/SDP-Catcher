@@ -7,9 +7,10 @@ interface StreamTreeProps {
   onStreamSelect: (stream: Stream) => void;
   selectedStreamId: string | null;
   onClearOffline?: () => void;
+  isSniffing: boolean;
 }
 
-export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearOffline }: StreamTreeProps) {
+export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearOffline, isSniffing }: StreamTreeProps) {
   const [expandedDevices, setExpandedDevices] = useState<string[]>([]);
 
   const toggleDevice = (ip: string) => {
@@ -19,12 +20,26 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   };
 
   const handleStreamClick = (stream: Stream) => {
-    console.log("Stream cliqué :", stream.name);
     onStreamSelect(stream);
   };
 
   const isStreamOnline = (lastSeen: number) => Date.now() - lastSeen <= 15000;
-  const isDeviceOnline = (device: Device) => device.streams.some(s => isStreamOnline(s.lastSeen));
+
+  const getStreamStatus = (stream: Stream) => {
+    if (!isSniffing) return "standby";
+    return isStreamOnline(stream.lastSeen) ? "online" : "offline";
+  };
+
+  const getDeviceStatus = (device: Device) => {
+    if (!isSniffing) return "standby";
+    const statuses = device.streams.map(s => isStreamOnline(s.lastSeen));
+    const allOnline = statuses.every(s => s === true);
+    const allOffline = statuses.every(s => s === false);
+    
+    if (allOnline) return "online";
+    if (allOffline) return "offline";
+    return "partial";
+  };
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-72 lg:w-80 shrink-0">
@@ -53,7 +68,14 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         ) : (
           devices.map((device) => {
             const isExpanded = expandedDevices.includes(device.ip);
-            const online = isDeviceOnline(device);
+            const status = getDeviceStatus(device);
+            
+            let statusClass = "bg-neutral-600 opacity-50";
+            if (status === "standby") statusClass = "bg-orange-500";
+            if (status === "online") statusClass = "bg-green-500";
+            if (status === "offline") statusClass = "bg-red-500";
+            if (status === "partial") statusClass = "bg-orange-500 animate-blink";
+
             return (
               <div key={device.ip} className="border-b border-neutral-800/50">
                 <button
@@ -65,7 +87,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   </div>
                   <div className="relative">
                     <HardDrive size={14} className="text-neutral-500 group-hover:text-neutral-300" />
-                    <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full border border-neutral-950 ${online ? 'bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.5)]' : 'bg-neutral-600 opacity-50'}`} />
+                    <div className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${statusClass}`} />
                   </div>
                   <div className="flex flex-col items-start leading-none min-w-0 text-left">
                     <span className="text-[11px] font-bold text-neutral-200 truncate w-full tracking-tight">{device.name}</span>
@@ -76,7 +98,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                 {isExpanded && (
                   <div className="space-y-0 bg-black/10">
                     {device.streams.sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
-                      const streamOnline = isStreamOnline(stream.lastSeen);
+                      const streamStatus = getStreamStatus(stream);
+                      
+                      let streamStatusClass = "bg-neutral-600 opacity-50";
+                      if (streamStatus === "standby") streamStatusClass = "bg-orange-500";
+                      if (streamStatus === "online") streamStatusClass = "bg-green-500 animate-pulse";
+                      if (streamStatus === "offline") streamStatusClass = "bg-red-500";
+
                       return (
                         <button
                           key={stream.id}
@@ -88,12 +116,12 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                           }`}
                         >
                            <div className="flex items-center gap-2 w-full">
-                              <div className={`w-1.5 h-1.5 rounded-full ${streamOnline ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]' : 'bg-red-500/50 opacity-50'}`} />
+                              <div className={`w-1.5 h-1.5 rounded-full ${streamStatusClass}`} />
                               <span className={`truncate flex-1 text-left ${selectedStreamId === stream.id ? 'text-white' : 'text-zinc-300'}`}>
                                 {stream.name}
                               </span>
                            </div>
-                           <span className="text-sm text-zinc-500 font-mono mt-0.5 pl-3.5">
+                           <span className="text-xs text-zinc-500 font-mono mt-0.5 pl-3.5">
                              {stream.multicastIp}
                            </span>
                         </button>
