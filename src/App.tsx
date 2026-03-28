@@ -29,10 +29,11 @@ function App() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
 
-  const parseSdp = (raw: string): { name: string; multicastIp: string } => {
+  const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string } => {
     const lines = raw.split(/\r?\n/);
     let name = "Unknown Stream";
     let multicastIp = "0.0.0.0";
+    let originIp = "0.0.0.0";
 
     for (const line of lines) {
       if (line.startsWith("s=")) {
@@ -40,20 +41,27 @@ function App() {
       } else if (line.startsWith("c=IN IP4 ")) {
         const parts = line.substring(9).split("/");
         multicastIp = parts[0].trim();
+      } else if (line.startsWith("o=")) {
+        const parts = line.split(" ");
+        if (parts.length >= 6) {
+          originIp = parts[5].trim();
+        }
       }
     }
-    return { name, multicastIp };
+    return { name, multicastIp, originIp };
   };
 
   useEffect(() => {
     const unlisten = listen<SdpDiscoveredEvent>("sdp-discovered", (event) => {
       console.log("📥 Évènement IPC reçu depuis Rust :", event.payload);
-      const { source_ip, sdp_content } = event.payload;
-      const { name, multicastIp } = parseSdp(sdp_content);
+      const { sdp_content } = event.payload;
+      const { name, multicastIp, originIp } = parseSdp(sdp_content);
+
+      if (originIp === "0.0.0.0") return;
 
       setDevices((prev) => {
         const timestamp = Date.now();
-        const existingDeviceIndex = prev.findIndex((d) => d.ip === source_ip);
+        const existingDeviceIndex = prev.findIndex((d) => d.ip === originIp);
 
         if (existingDeviceIndex >= 0) {
           const newDevices = [...prev];
@@ -69,7 +77,7 @@ function App() {
             };
           } else {
             device.streams.push({
-              id: `${source_ip}-${name}`,
+              id: `${originIp}-${name}`,
               name,
               multicastIp,
               sdpContent: sdp_content,
@@ -82,11 +90,11 @@ function App() {
           return [
             ...prev,
             {
-              name: `Device ${source_ip}`,
-              ip: source_ip,
+              name: `Device ${originIp}`,
+              ip: originIp,
               streams: [
                 {
-                  id: `${source_ip}-${name}`,
+                  id: `${originIp}-${name}`,
                   name,
                   multicastIp,
                   sdpContent: sdp_content,

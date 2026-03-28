@@ -13,6 +13,10 @@ interface InterfaceListProps {
   onInterfaceSelect: (ip: string) => void;
 }
 
+const maskToCidr = (mask: string): number => {
+  return mask.split('.').reduce((acc, octet) => acc + (Number(octet).toString(2).match(/1/g) || []).length, 0);
+};
+
 export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProps) {
   const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
 
@@ -44,6 +48,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
         ) : (
           interfaces.map((iface) => {
             const isActive = activeIp === iface.ip;
+            const cidr = maskToCidr(iface.mask);
             return (
               <button
                 key={iface.ip}
@@ -61,8 +66,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
                   {isActive && <Activity size={10} className="text-blue-400 animate-pulse" />}
                 </div>
                 <div className="text-xs text-zinc-500 font-mono flex gap-2">
-                  <span>{iface.ip}</span>
-                  <span className="opacity-40">{iface.mask}</span>
+                  <span>{iface.ip} <span className="opacity-60">/{cidr}</span></span>
                 </div>
               </button>
             );
