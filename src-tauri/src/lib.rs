@@ -67,21 +67,41 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
         let iface_addr: Ipv4Addr = interface_ip.parse().expect("Invalid interface IP");
         let port = 9875;
 
-        // Create socket
-        let socket = match UdpSocket::bind((bind_addr, port)) {
-            Ok(s) => s,
-            Err(e) => {
-                eprintln!("Failed to bind UDP socket on {}:{}: {}", bind_addr, port, e);
+        let mut socket = None;
+        let mut attempts = 0;
+        let max_attempts = 5;
+
+        // Loop to retry binding (necessary because Windows may take time to update IP/Driver state)
+        while attempts < max_attempts && !stop_flag.load(Ordering::Relaxed) {
+            attempts += 1;
+            println!("📥 Tentative de bind UDP {}/{} sur {}...", attempts, max_attempts, interface_ip);
+            
+            match UdpSocket::bind((bind_addr, port)) {
+                Ok(s) => {
+                    s.set_read_timeout(Some(Duration::from_millis(500))).ok();
+                    if let Err(e) = s.join_multicast_v4(&sap_addr, &iface_addr) {
+                        eprintln!("⚠️ Échec du join multicast (tentative {}): {}", attempts, e);
+                        thread::sleep(Duration::from_secs(1));
+                        continue;
+                    }
+                    println!("✅ Bind UDP réussi sur la tentative {}", attempts);
+                    socket = Some(s);
+                    break;
+                }
+                Err(e) => {
+                    eprintln!("⚠️ Échec du bind UDP (tentative {}): {}", attempts, e);
+                    thread::sleep(Duration::from_secs(1));
+                }
+            }
+        }
+
+        let socket = match socket {
+            Some(s) => s,
+            None => {
+                eprintln!("❌ Échec définitif du bind UDP après {} tentatives", max_attempts);
                 return;
             }
         };
-
-        socket.set_read_timeout(Some(Duration::from_millis(500))).ok();
-
-        if let Err(e) = socket.join_multicast_v4(&sap_addr, &iface_addr) {
-            eprintln!("Failed to join multicast group: {}", e);
-            return;
-        }
 
         let mut buf = [0u8; 4096];
         while !stop_flag.load(Ordering::Relaxed) {

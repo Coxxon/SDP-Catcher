@@ -10,14 +10,16 @@ interface InterfaceInfo {
 
 interface InterfaceListProps {
   activeIp: string | null;
+  isSniffing: boolean;
   onInterfaceSelect: (ip: string) => void;
+  setIsSniffing: (value: boolean) => void;
 }
 
 const maskToCidr = (mask: string): number => {
   return mask.split('.').reduce((acc, octet) => acc + (Number(octet).toString(2).match(/1/g) || []).length, 0);
 };
 
-export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProps) {
+export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSniffing }: InterfaceListProps) {
   const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [hiddenInterfaces, setHiddenInterfaces] = useState<string[]>(() => {
@@ -57,6 +59,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
   const handleDoubleClick = async (iface: InterfaceInfo) => {
     if (isEditMode) return;
     // 1. Stop sniffing instantly when entering edit mode to release socket
+    setIsSniffing(false);
     await invoke("stop_sniffing");
     setEditingIp(iface.ip);
     setEditForm({ isDhcp: false, ip: iface.ip, mask: iface.mask });
@@ -80,6 +83,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
       // 3. Auto-restart sniffing on the new (or old if DHCP) IP
       const finalIp = editForm.isDhcp ? iface.ip : editForm.ip;
       await invoke("start_sniffing", { interfaceIp: finalIp });
+      setIsSniffing(true);
       
       // 4. Update state and close edit mode
       onInterfaceSelect(finalIp); 
@@ -99,7 +103,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-64 lg:w-72 shrink-0">
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
         <div className="flex items-center gap-2">
-          <Network size={14} className="text-neutral-400" />
+          <Network size={14} className={isSniffing ? "text-green-500 animate-pulse" : "text-neutral-400"} />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Interfaces</h2>
         </div>
         <div className="flex items-center gap-1">
@@ -149,7 +153,13 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
                                          setEditingIp(null);
                                          // If we cancel the edit, resume sniffing on the active card
                                          if (activeIp) {
-                                            await invoke("start_sniffing", { interfaceIp: activeIp });
+                                            try {
+                                                await invoke("start_sniffing", { interfaceIp: activeIp });
+                                                setIsSniffing(true);
+                                            } catch (err) {
+                                                console.error("Failed to resume sniffing", err);
+                                                setIsSniffing(false);
+                                            }
                                          }
                                      }} 
                                      className="text-neutral-500 hover:text-white"
@@ -231,7 +241,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
                           <Pencil size={12} />
                         </div>
                       )}
-                      {isActive && <Activity size={10} className="text-blue-400 animate-pulse" />}
+                      {isActive && <Activity size={10} className={isSniffing ? "text-green-500 animate-pulse" : "text-neutral-500"} />}
                     </div>
                   </div>
                   <div className="text-xs text-zinc-500 font-mono flex gap-2">

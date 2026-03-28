@@ -26,6 +26,7 @@ interface SdpDiscoveredEvent {
 
 function App() {
   const [activeIp, setActiveIp] = useState<string | null>(null);
+  const [isSniffing, setIsSniffing] = useState(false);
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
 
@@ -125,6 +126,7 @@ function App() {
     
     // Clear current state and stop sniffing
     setActiveIp(ip || null);
+    setIsSniffing(false);
     setDevices([]);
     
     // Always stop previous if it was active
@@ -134,8 +136,10 @@ function App() {
 
     try {
       await invoke("start_sniffing", { interfaceIp: ip });
+      setIsSniffing(true);
     } catch (err) {
       console.error("Failed to start sniffing", err);
+      setIsSniffing(false);
     }
   };
 
@@ -143,7 +147,9 @@ function App() {
     <main className="flex h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none">
       <InterfaceList
         activeIp={activeIp}
+        isSniffing={isSniffing}
         onInterfaceSelect={handleInterfaceSelect}
+        setIsSniffing={setIsSniffing}
       />
       <StreamTree
         devices={devices}
