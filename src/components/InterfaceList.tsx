@@ -19,6 +19,20 @@ const maskToCidr = (mask: string): number => {
   return mask.split('.').reduce((acc, octet) => acc + (Number(octet).toString(2).match(/1/g) || []).length, 0);
 };
 
+const calculateDefaultMask = (ip: string): string => {
+  const firstOctet = parseInt(ip.split('.')[0]);
+  if (isNaN(firstOctet)) return '';
+  if (firstOctet >= 1 && firstOctet <= 127) return '255.0.0.0';
+  if (firstOctet >= 128 && firstOctet <= 191) return '255.255.0.0';
+  if (firstOctet >= 192 && firstOctet <= 223) return '255.255.255.0';
+  return '255.255.255.0';
+};
+
+const validateIpOrMask = (value: string): boolean => {
+  const regex = /^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  return regex.test(value);
+};
+
 export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSniffing }: InterfaceListProps) {
   const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -29,6 +43,7 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
 
   const [editingIp, setEditingIp] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ isDhcp: false, ip: '', mask: '' });
+  const [fieldErrors, setFieldErrors] = useState<{ip?: boolean, mask?: boolean}>({});
   const [isPending, setIsPending] = useState(false);
 
   const refreshInterfaces = () => {
@@ -66,6 +81,16 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
   };
 
   const handleApply = async (iface: InterfaceInfo) => {
+    if (!editForm.isDhcp) {
+        const ipValid = validateIpOrMask(editForm.ip);
+        const maskValid = validateIpOrMask(editForm.mask);
+        
+        if (!ipValid || !maskValid) {
+            setFieldErrors({ ip: !ipValid, mask: !maskValid });
+            return;
+        }
+    }
+    setFieldErrors({});
     setIsPending(true);
     try {
       // 1. Apply the new IP
@@ -103,7 +128,10 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-64 lg:w-72 shrink-0">
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
         <div className="flex items-center gap-2">
-          <Network size={14} className={isSniffing ? "text-green-500 animate-pulse" : "text-neutral-400"} />
+          <Network 
+            size={14} 
+            className={isSniffing ? "text-green-500 animate-pulse" : (activeIp ? "text-amber-500" : "text-neutral-400")} 
+          />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Interfaces</h2>
         </div>
         <div className="flex items-center gap-1">
@@ -187,8 +215,29 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
                                     <input 
                                         type="text" 
                                         value={editForm.ip}
-                                        onChange={e => setEditForm({...editForm, ip: e.target.value})}
-                                        className="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500/50"
+                                        onChange={e => {
+                                            setEditForm({...editForm, ip: e.target.value});
+                                            if (fieldErrors.ip) setFieldErrors({...fieldErrors, ip: false});
+                                        }}
+                                        onBlur={() => {
+                                            if (!editForm.mask && editForm.ip) {
+                                                setEditForm(prev => ({...prev, mask: calculateDefaultMask(prev.ip)}));
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (!editForm.mask) {
+                                                    const autoMask = calculateDefaultMask(editForm.ip);
+                                                    setEditForm(prev => ({...prev, mask: autoMask}));
+                                                    handleApply({...iface, mask: autoMask});
+                                                } else {
+                                                    handleApply(iface);
+                                                }
+                                            }
+                                        }}
+                                        className={`w-full bg-neutral-900 border ${fieldErrors.ip ? 'border-red-500' : 'border-neutral-700'} rounded px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500/50`}
                                     />
                                 </div>
                                 <div className="space-y-1">
@@ -196,8 +245,18 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
                                     <input 
                                         type="text" 
                                         value={editForm.mask}
-                                        onChange={e => setEditForm({...editForm, mask: e.target.value})}
-                                        className="w-full bg-neutral-900 border border-neutral-700 rounded px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500/50"
+                                        onChange={e => {
+                                            setEditForm({...editForm, mask: e.target.value});
+                                            if (fieldErrors.mask) setFieldErrors({...fieldErrors, mask: false});
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                handleApply(iface);
+                                            }
+                                        }}
+                                        className={`w-full bg-neutral-900 border ${fieldErrors.mask ? 'border-red-500' : 'border-neutral-700'} rounded px-2 py-1 text-xs text-neutral-200 focus:outline-none focus:border-blue-500/50`}
                                     />
                                 </div>
                             </div>
@@ -241,7 +300,12 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
                           <Pencil size={12} />
                         </div>
                       )}
-                      {isActive && <Activity size={10} className={isSniffing ? "text-green-500 animate-pulse" : "text-neutral-500"} />}
+                      {isActive && (
+                        <Activity 
+                            size={10} 
+                            className={isSniffing ? "text-green-500 animate-pulse" : "text-amber-500"} 
+                        />
+                      )}
                     </div>
                   </div>
                   <div className="text-xs text-zinc-500 font-mono flex gap-2">
