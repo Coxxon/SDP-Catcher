@@ -31,6 +31,12 @@ struct PtpPayload {
     ip: String,
 }
 
+#[derive(Serialize)]
+struct DeviceInfo {
+    ip: String,
+    name: String,
+}
+
 pub struct AppState {
     sniffer_stop_flag: Mutex<Option<Arc<AtomicBool>>>,
     default_unknown_timeout_s: Mutex<u64>,
@@ -261,16 +267,17 @@ fn set_network_ip(interface_name: String, is_dhcp: bool, ip: Option<String>, mas
 }
 
 #[tauri::command]
-fn get_arp_table() -> std::collections::HashMap<String, String> {
+fn get_arp_table() -> std::collections::HashMap<String, DeviceInfo> {
     use std::collections::HashMap;
     let mut table = HashMap::new();
     
-    // Inject mock entries for simulator (standard PTP IDs -> IP)
-    // We map 00:11:22:88:88:XX (original MAC part of the EUI-64) to 192.168.1.XX
+    // Inject mock entries for simulator (standard PTP IDs -> IP + Name)
+    let mock_names = vec!["GM-Clock-Antenna", "Lawo-Core-Primary", "Axia-Console-StudioA", "Riedel-Switch-01", "Yamaha-Rivage-FOH"];
     for i in 121..170 {
         let mac = format!("00:11:22:88:88:{:02X}", i);
         let ip = format!("192.168.1.{}", i);
-        table.insert(mac, ip);
+        let name = mock_names[i % mock_names.len()].to_string();
+        table.insert(mac, DeviceInfo { ip, name });
     }
 
     let output = std::process::Command::new("arp")
@@ -285,7 +292,10 @@ fn get_arp_table() -> std::collections::HashMap<String, String> {
                 let ip = parts[0];
                 let mac = parts[1].replace("-", ":").to_uppercase();
                 if mac.split(':').count() == 6 {
-                    table.insert(mac, ip.to_string());
+                    table.entry(mac).or_insert(DeviceInfo {
+                        ip: ip.to_string(),
+                        name: "---".to_string(),
+                    });
                 }
             }
         }

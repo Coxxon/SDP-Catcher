@@ -12,15 +12,14 @@ interface SdpViewerProps {
 export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   const [copied, setCopied] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(true);
-  const [showIp, setShowIp] = useState(false);
-  const [arpTable, setArpTable] = useState<Record<string, string>>({});
+  const [displayMode, setDisplayMode] = useState<'ptp' | 'mac' | 'ip' | 'name'>('ptp');
+  const [arpTable, setArpTable] = useState<Record<string, { ip: string; name: string }>>({});
 
   useEffect(() => {
-    invoke<Record<string, string>>("get_arp_table").then(setArpTable);
+    invoke<Record<string, { ip: string; name: string }>>("get_arp_table").then(setArpTable);
   }, []);
 
   const ptpIdToMac = (ptpId: string) => {
-    // Standard EUI-64 to MAC-48: 00-11-22-FF-FE-33-44-55 -> 00:11:22:33:44:55
     const norm = ptpId.replace(/:/g, '-');
     const parts = norm.split('-');
     if (parts.length === 8) {
@@ -64,7 +63,6 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
     for (const line of lines) {
       const lowerLine = line.toLowerCase();
       if (line.startsWith("a=rtpmap:")) {
-        // Ex: a=rtpmap:96 L24/48000/2
         const parts = line.split(" ");
         if (parts.length >= 2) {
           const params = parts[1].split("/");
@@ -79,7 +77,6 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
       } else if (line.startsWith("a=ptime:")) {
         ptime = `${line.substring(8).trim()} ms`;
       } else if (lowerLine.includes("ts-refclk:ptp=")) {
-        // Ex: a=ts-refclk:ptp=IEEE1588-2008:00-11-22-FF-FE-33-44-55:0
         const parts = line.split(":");
         if (parts.length >= 3) {
            masterClock = parts[parts.length - 2] || "---";
@@ -91,7 +88,37 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
 
   const streamInfo = parseStreamInfo(sdp);
   const gmMac = streamInfo?.masterClock ? ptpIdToMac(streamInfo.masterClock) : "";
-  const resolvedIp = arpTable[gmMac];
+  const resolved = arpTable[gmMac];
+
+  const cycleDisplayMode = () => {
+    const modes: ('ptp' | 'mac' | 'ip' | 'name')[] = ['ptp', 'mac', 'ip', 'name'];
+    let nextIndex = (modes.indexOf(displayMode) + 1) % modes.length;
+    
+    // Skip IP if not found
+    if (modes[nextIndex] === 'ip' && !resolved?.ip) {
+      nextIndex = (nextIndex + 1) % modes.length;
+    }
+    // Skip Name if not found or placeholder
+    if (modes[nextIndex] === 'name' && (!resolved?.name || resolved?.name === '---')) {
+      nextIndex = (nextIndex + 1) % modes.length;
+    }
+    // Secondary check if we jumped to IP again
+    if (modes[nextIndex] === 'ip' && !resolved?.ip) {
+       nextIndex = 0;
+    }
+
+    setDisplayMode(modes[nextIndex]);
+  };
+
+  const getDisplayText = () => {
+    switch (displayMode) {
+      case 'ptp': return streamInfo?.masterClock;
+      case 'mac': return gmMac;
+      case 'ip': return resolved?.ip;
+      case 'name': return resolved?.name;
+      default: return streamInfo?.masterClock;
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 flex-1 min-w-0">
@@ -181,11 +208,11 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
             <div className="flex items-center justify-between">
               <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Master Clock</span>
               <span 
-                onClick={() => resolvedIp && setShowIp(!showIp)}
-                className={`text-[10px] text-neutral-200 font-mono font-bold tracking-tight ${resolvedIp ? 'cursor-pointer hover:text-white hover:bg-white/5 px-1 rounded transition-all underline decoration-dotted decoration-neutral-600' : ''}`}
-                title={resolvedIp ? "Click to toggle ID/IP" : "MAC not found in ARP table"}
+                onClick={cycleDisplayMode}
+                className="text-[10px] text-neutral-200 font-mono font-bold tracking-tight cursor-pointer hover:text-white hover:bg-white/5 px-1 rounded transition-all underline decoration-dotted decoration-neutral-600"
+                title={`Mode: ${displayMode.toUpperCase()} | Click to cycle (ID/MAC/IP/Name)`}
               >
-                {showIp && resolvedIp ? resolvedIp : streamInfo?.masterClock}
+                {getDisplayText()}
               </span>
             </div>
           </div>
