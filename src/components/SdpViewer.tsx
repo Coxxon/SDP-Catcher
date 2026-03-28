@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Copy, Check, Download, Activity, FileText } from "lucide-react";
+import { Copy, Check, Download, Activity, FileText, ChevronUp, ChevronDown } from "lucide-react";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 
@@ -10,6 +10,7 @@ interface SdpViewerProps {
 
 export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   const [copied, setCopied] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(true);
 
   const handleCopy = () => {
     if (sdp) {
@@ -34,9 +35,43 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
     }
   };
 
+  const parseStreamInfo = (raw: string | null) => {
+    if (!raw) return null;
+    const lines = raw.split(/\r?\n/);
+    let codec = "Unknown";
+    let sampling = "Unknown";
+    let channels = "Unknown";
+    let ptime = "---";
+    let sync = "No Sync";
+
+    for (const line of lines) {
+      if (line.startsWith("a=rtpmap:")) {
+        // Ex: a=rtpmap:96 L24/48000/2
+        const parts = line.split(" ");
+        if (parts.length >= 2) {
+          const params = parts[1].split("/");
+          codec = params[0] || "Unknown";
+          sampling = params[1] ? `${params[1]} Hz` : "Unknown";
+          channels = params[2] || "Unknown";
+        }
+      } else if (line.startsWith("a=ptime:")) {
+        ptime = `${line.substring(8).trim()} ms`;
+      } else if (line.indexOf("ts-refclk:ptp=") !== -1) {
+        // Ex: a=ts-refclk:ptp=ieee1588-2008:00-11-22-FF-FE-33-44-55:0
+        const parts = line.split(":");
+        if (parts.length >= 3) {
+           sync = parts[parts.length - 2] || "Unknown";
+        }
+      }
+    }
+    return { codec, sampling, channels, ptime, sync };
+  };
+
+  const streamInfo = parseStreamInfo(sdp);
+
   return (
     <div className="flex flex-col h-full bg-neutral-900 flex-1 min-w-0">
-      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
+      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
           <FileText size={14} className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight truncate">SDP</h2>
@@ -87,6 +122,40 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
           <div className="h-full flex flex-col items-center justify-center text-neutral-800 space-y-4">
              <Activity size={32} className="animate-pulse opacity-20" />
              <p className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-20">Monitoring Network</p>
+          </div>
+        )}
+      </div>
+
+      {/* Stream Info Drawer */}
+      <div className="bg-neutral-800 border-t border-neutral-700 shrink-0">
+        <button
+          onClick={() => setIsDrawerOpen(!isDrawerOpen)}
+          className="w-full h-8 flex items-center justify-between px-3 hover:bg-neutral-700/50 transition-all font-sans"
+        >
+          <span className="text-[10px] font-bold text-neutral-400 tracking-wider">STREAM INFOS</span>
+          {isDrawerOpen ? <ChevronDown size={14} className="text-neutral-500" /> : <ChevronUp size={14} className="text-neutral-500" />}
+        </button>
+
+        {isDrawerOpen && (
+          <div className="px-3 pb-3 space-y-1 font-sans">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Format</span>
+              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.codec || "---"} ({streamInfo?.channels || "---"} ch)</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Sampling</span>
+              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.sampling || "---"}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Packet Time</span>
+              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.ptime || "---"}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Sync (PTP GM)</span>
+              <span className="text-[10px] text-blue-400 font-mono font-bold tracking-tight">
+                {streamInfo?.sync || "Internal"}
+              </span>
+            </div>
           </div>
         )}
       </div>

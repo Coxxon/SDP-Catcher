@@ -82,6 +82,8 @@ const generatePayload = (deviceName, deviceIp, streamName, multicastIp) => {
     't=0 0\n' +
     'm=audio 5004 RTP/AVP 97\n' +
     'a=rtpmap:97 L24/48000/2\n' +
+    'a=ptime:1\n' +
+    'a=ts-refclk:ptp=ieee1588-2008:00-11-22-FF-FE-33-44-55:0\n' +
     'a=recvonly'
   );
 };
@@ -119,7 +121,7 @@ server.on('listening', () => {
 
   // PTP Clock Heartbeat (Global)
   setInterval(() => {
-    const ptpPayload = Buffer.from('PTP_MOCK|Grandmaster_StudioA|192.168.1.100');
+    const ptpPayload = Buffer.from('PTP_MOCK|00-11-22-FF-FE-33-44-55|192.168.1.100');
     server.send(ptpPayload, 0, ptpPayload.length, PTP_PORT, PTP_MULTICAST_ADDR);
   }, 2000);
 });
