@@ -70,7 +70,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   };
 
   return (
-    <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-72 lg:w-80 shrink-0">
+    <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-[255px] min-w-[255px] max-w-[255px] shrink-0">
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
         <div className="flex items-center gap-2">
           <Rss size={14} className="text-neutral-400" />
@@ -123,7 +123,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   </div>
 
                   <div className="relative z-10 flex flex-col items-start leading-none min-w-0 text-left">
-                    <span className="text-[11px] font-bold text-neutral-200 truncate w-full tracking-tight">{device.name}</span>
+                    <span className="text-[11px] font-bold text-neutral-200 truncate w-full tracking-tight pb-0.5">{device.name}</span>
                     <span className="text-xs text-zinc-500 font-mono mt-0.5">{device.ip}</span>
                   </div>
 
@@ -140,15 +140,15 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                     {/* Device Meta Info */}
                     <div className="px-8 py-2 bg-black/20 border-y border-white/5 shadow-inner flex flex-col gap-0.5">
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Manufacturer</span>
-                        <span className={`text-[10px] ${device.manufacturer === 'Unknown' ? 'text-neutral-600 italic' : 'text-neutral-200 font-bold'}`}>
+                        <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider whitespace-nowrap">Manufacturer</span>
+                        <span className={`text-[10px] whitespace-nowrap ${device.manufacturer === 'Unknown' ? 'text-neutral-600 italic' : 'text-neutral-200 font-bold'}`}>
                           {device.manufacturer.split(' (')[0]}
                           {device.manufacturer === 'Unknown' && ' (fallback)'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">SAP Timeout</span>
-                        <span className="text-[10px] text-neutral-200 font-mono">
+                        <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider whitespace-nowrap">SAP Timeout</span>
+                        <span className="text-[10px] text-neutral-200 font-mono whitespace-nowrap">
                           {device.sapTimeoutMs / 1000}s
                           {device.manufacturer === 'Unknown' && ' (user-defined)'}
                         </span>

@@ -45,6 +45,7 @@ const ipToLong = (ip: string) => ip.split('.').reduce((acc, octet) => (acc << 8)
 function App() {
   const [activeIp, setActiveIp] = useState<string | null>(null);
   const activeIpRef = useRef(activeIp);
+  const [zoomLevel, setZoomLevel] = useState<number>(1.0);
 
   useEffect(() => {
     activeIpRef.current = activeIp;
@@ -335,9 +336,12 @@ function App() {
 
 
   return (
-    <main className="flex flex-col h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none">
+    <main 
+      className="flex flex-col h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none"
+      style={{ zoom: zoomLevel } as any}
+    >
       {/* Dynamic Workspace Container */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-x-auto overflow-y-hidden">
         <InterfaceList
           activeIp={activeIp}
           isSniffing={isSniffing}
@@ -382,6 +386,21 @@ function App() {
         </div>
 
         <div className="flex items-center gap-3 ml-auto">
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded px-1 h-4.5">
+              <button 
+                 onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
+                 className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0"
+                 title="Zoom Out"
+              >-</button>
+              <span className="text-[9px] text-zinc-400 font-mono w-6 text-center select-none">{Math.round(zoomLevel * 100)}%</span>
+              <button 
+                 onClick={() => setZoomLevel(prev => Math.min(2.0, prev + 0.1))}
+                 className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0 pb-0.5"
+                 title="Zoom In"
+              >+</button>
+            </div>
+
             <div className="flex items-center gap-2">
                 <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-wider">Default SAP Timeout</span>
                 <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[36px]">

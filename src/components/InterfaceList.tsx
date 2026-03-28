@@ -136,7 +136,7 @@ export function InterfaceList({
   };
 
   return (
-    <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-64 lg:w-72 shrink-0">
+    <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-[255px] min-w-[255px] max-w-[255px] shrink-0">
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
         <div className="flex items-center gap-2">
           <Network 
