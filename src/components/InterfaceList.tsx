@@ -1,61 +1,21 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Network, Activity, Settings, RefreshCw, X, Check, Pencil } from "lucide-react";
-
-interface InterfaceInfo {
-  name: string;
-  ip: string;
-  mask: string;
-}
+import { Device, InterfaceInfo } from "../App";
 
 interface InterfaceListProps {
   activeIp: string | null;
   isSniffing: boolean;
+  interfaces: InterfaceInfo[];
+  devices: Device[];
   onInterfaceSelect: (ip: string) => void;
   setIsSniffing: (value: boolean) => void;
+  onRefreshInterfaces: () => Promise<InterfaceInfo[]>;
+  onStartSniffing: (ifaces: InterfaceInfo[]) => Promise<void>;
 }
 
 const maskToCidr = (mask: string): number => {
   return mask.split('.').reduce((acc, octet) => acc + (Number(octet).toString(2).match(/1/g) || []).length, 0);
-};
-
-const formatIpInput = (value: string, oldValue: string): string => {
-  // Allow only numbers and dots
-  const clean = value.replace(/[^0-9.]/g, '');
-  const parts = clean.split('.');
-  
-  // Max 4 octets
-  if (parts.length > 4) return oldValue;
-
-  const isDeleting = value.length < oldValue.length;
-
-  let newParts = [];
-  for (let i = 0; i < parts.length; i++) {
-    let part = parts[i];
-
-    // Rule 1: Max 255
-    if (part !== '' && parseInt(part) > 255) return oldValue;
-
-    // Rule 4: Zero initial
-    if (part.length > 1 && part[0] === '0') return oldValue;
-
-    newParts.push(part);
-
-    // Auto-dot rules (only when typing)
-    if (!isDeleting && i < 3 && i === parts.length - 1) {
-      if (part.length === 3 || (part === '0' && value.endsWith('0'))) {
-        newParts.push('');
-      }
-    }
-  }
-
-  // Join and prevent trailing dot if we just deleted one
-  let result = newParts.join('.');
-  if (isDeleting && oldValue.endsWith('.') && value === oldValue.slice(0, -1)) {
-      return value;
-  }
-  
-  return result;
 };
 
 const validateIpOrMask = (value: string): boolean => {
@@ -63,8 +23,38 @@ const validateIpOrMask = (value: string): boolean => {
   return regex.test(value);
 };
 
-export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSniffing }: InterfaceListProps) {
-  const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
+const formatIpInput = (value: string, oldValue: string): string => {
+  const clean = value.replace(/[^0-9.]/g, '');
+  const parts = clean.split('.');
+  if (parts.length > 4) return oldValue;
+  const isDeleting = value.length < oldValue.length;
+  let newParts = [];
+  for (let i = 0; i < parts.length; i++) {
+    let part = parts[i];
+    if (part !== '' && parseInt(part) > 255) return oldValue;
+    if (part.length > 1 && part[0] === '0') return oldValue;
+    newParts.push(part);
+    if (!isDeleting && i < 3 && i === parts.length - 1) {
+      if (part.length === 3 || (part === '0' && value.endsWith('0'))) {
+        newParts.push('');
+      }
+    }
+  }
+  let result = newParts.join('.');
+  if (isDeleting && oldValue.endsWith('.') && value === oldValue.slice(0, -1)) return value;
+  return result;
+};
+
+export function InterfaceList({ 
+    activeIp, 
+    isSniffing, 
+    interfaces, 
+    devices, 
+    onInterfaceSelect, 
+    setIsSniffing,
+    onRefreshInterfaces,
+    onStartSniffing
+}: InterfaceListProps) {
   const [isEditMode, setIsEditMode] = useState(false);
   const [hiddenInterfaces, setHiddenInterfaces] = useState<string[]>(() => {
     const saved = localStorage.getItem("hiddenInterfaces");
@@ -76,19 +66,23 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
   const [fieldErrors, setFieldErrors] = useState<{ip?: boolean, mask?: boolean}>({});
   const [isPending, setIsPending] = useState(false);
 
-  const refreshInterfaces = () => {
-    invoke<InterfaceInfo[]>("get_network_interfaces")
-      .then(setInterfaces)
-      .catch(console.error);
-  };
-
-  useEffect(() => {
-    refreshInterfaces();
-  }, []);
-
   useEffect(() => {
     localStorage.setItem("hiddenInterfaces", JSON.stringify(hiddenInterfaces));
   }, [hiddenInterfaces]);
+
+  const ipToLong = (ip: string) => ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
+
+  const getStreamCount = (iface: InterfaceInfo) => {
+    const m = ipToLong(iface.mask);
+    const target = (ipToLong(iface.ip) & m) >>> 0;
+    
+    return devices.reduce((acc, d) => {
+        if (((ipToLong(d.ip) & m) >>> 0) === target) {
+            return acc + d.streams.length;
+        }
+        return acc;
+    }, 0);
+  };
 
   const handleClick = (ip: string) => {
     if (editingIp) return;
@@ -103,7 +97,6 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
 
   const handleDoubleClick = async (iface: InterfaceInfo) => {
     if (isEditMode) return;
-    // 1. Stop sniffing instantly when entering edit mode to release socket
     setIsSniffing(false);
     await invoke("stop_sniffing");
     setEditingIp(iface.ip);
@@ -114,7 +107,6 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
     if (!editForm.isDhcp) {
         const ipValid = validateIpOrMask(editForm.ip);
         const maskValid = validateIpOrMask(editForm.mask);
-        
         if (!ipValid || !maskValid) {
             setFieldErrors({ ip: !ipValid, mask: !maskValid });
             return;
@@ -123,29 +115,18 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
     setFieldErrors({});
     setIsPending(true);
     try {
-      // 1. Apply the new IP
-      const result = await invoke("set_network_ip", {
+      await invoke("set_network_ip", {
         interfaceName: iface.name,
         isDhcp: editForm.isDhcp,
         ip: editForm.isDhcp ? null : editForm.ip,
         mask: editForm.isDhcp ? null : editForm.mask
       });
-      console.log(result);
-      
-      // 2. Delay for Windows driver to stabilize
       await new Promise((r) => setTimeout(r, 2500));
-
-      // 3. Auto-restart sniffing on the new (or old if DHCP) IP
+      const newIfaces = await onRefreshInterfaces();
+      await onStartSniffing(newIfaces);
       const finalIp = editForm.isDhcp ? iface.ip : editForm.ip;
-      await invoke("start_sniffing", { interfaceIp: finalIp });
-      setIsSniffing(true);
-      
-      // 4. Update state and close edit mode
       onInterfaceSelect(finalIp); 
       setEditingIp(null);
-      
-      // 5. Refresh interface list
-      setTimeout(refreshInterfaces, 1000); 
     } catch (err: any) {
       alert(`Erreur: ${err}`);
       console.error(err);
@@ -166,7 +147,7 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={refreshInterfaces}
+            onClick={onRefreshInterfaces}
             className="p-1.5 rounded-md hover:bg-neutral-700 transition-all text-neutral-500"
           >
             <RefreshCw size={14} />
@@ -195,6 +176,8 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
               const isHidden = hiddenInterfaces.includes(iface.ip);
               const isEditing = editingIp === iface.ip;
               const cidr = maskToCidr(iface.mask);
+              const streamCount = getStreamCount(iface);
+              const hasStreams = streamCount > 0;
               
               if (isEditing) {
                   return (
@@ -209,16 +192,7 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
                                      onClick={async (e) => { 
                                          e.stopPropagation(); 
                                          setEditingIp(null);
-                                         // If we cancel the edit, resume sniffing on the active card
-                                         if (activeIp) {
-                                            try {
-                                                await invoke("start_sniffing", { interfaceIp: activeIp });
-                                                setIsSniffing(true);
-                                            } catch (err) {
-                                                console.error("Failed to resume sniffing", err);
-                                                setIsSniffing(false);
-                                            }
-                                         }
+                                         onStartSniffing(interfaces);
                                      }} 
                                      className="text-neutral-500 hover:text-white"
                                  >
@@ -301,16 +275,25 @@ export function InterfaceList({ activeIp, isSniffing, onInterfaceSelect, setIsSn
                 <button
                   key={iface.ip}
                   onClick={() => handleClick(iface.ip)}
-                  className={`w-full text-left px-3 py-2 transition-all border-b border-neutral-800/50 group relative flex flex-col gap-0.5 ${
+                  className={`w-full text-left px-3 py-2 transition-all border-b group relative flex flex-col gap-0.5 ${
                     isActive
-                      ? "bg-neutral-700 text-white"
-                      : "text-neutral-400 hover:bg-neutral-800"
+                      ? "bg-neutral-700 text-white border-blue-500/50"
+                      : hasStreams 
+                        ? "bg-blue-500/5 border-blue-500/20 text-neutral-300" 
+                        : "text-neutral-400 hover:bg-neutral-800 border-neutral-800/50"
                   } ${isHidden ? "opacity-30" : "opacity-100"} select-none`}
                 >
                   <div className="flex items-center justify-between">
-                    <span className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
-                      {iface.name}
-                    </span>
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
+                          {iface.name}
+                        </span>
+                        {hasStreams && (
+                            <span className="bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-lg shadow-blue-500/20">
+                                {streamCount}
+                            </span>
+                        )}
+                    </div>
                     <div className="flex items-center gap-1.5">
                       {!isEditMode && (
                         <div 

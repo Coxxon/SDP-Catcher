@@ -46,8 +46,8 @@ fn get_network_interfaces() -> Vec<NetworkInterface> {
 }
 
 #[tauri::command]
-fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppState>) {
-    println!("🚀 Commande Rust reçue : Démarrage sur {}", interface_ip);
+fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, AppState>) {
+    println!("🚀 Commande Rust reçue : Démarrage global sur {} interfaces", interface_ips.len());
     
     // 1. Stop existing thread if any
     let mut stop_flag_lock = state.sniffer_stop_flag.lock().unwrap();
@@ -64,32 +64,46 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
     thread::spawn(move || {
         let sap_addr = Ipv4Addr::new(239, 255, 255, 255);
         let bind_addr = Ipv4Addr::new(0, 0, 0, 0);
-        let iface_addr: Ipv4Addr = interface_ip.parse().expect("Invalid interface IP");
         let port = 9875;
 
         let mut socket = None;
         let mut attempts = 0;
         let max_attempts = 5;
 
-        // Loop to retry binding (necessary because Windows may take time to update IP/Driver state)
+        // Loop to retry binding
         while attempts < max_attempts && !stop_flag.load(Ordering::Relaxed) {
             attempts += 1;
-            println!("📥 Tentative de bind UDP {}/{} sur {}...", attempts, max_attempts, interface_ip);
+            println!("📥 Tentative de bind UDP global {}/{}...", attempts, max_attempts);
             
             match UdpSocket::bind((bind_addr, port)) {
                 Ok(s) => {
                     s.set_read_timeout(Some(Duration::from_millis(500))).ok();
-                    if let Err(e) = s.join_multicast_v4(&sap_addr, &iface_addr) {
-                        eprintln!("⚠️ Échec du join multicast (tentative {}): {}", attempts, e);
-                        thread::sleep(Duration::from_secs(1));
-                        continue;
+                    
+                    // Join multicast group on each provided interface
+                    let mut success_count = 0;
+                    for ip in &interface_ips {
+                        if let Ok(iface_addr) = ip.parse::<Ipv4Addr>() {
+                            if let Err(e) = s.join_multicast_v4(&sap_addr, &iface_addr) {
+                                eprintln!("⚠️ Échec du join multicast sur {} : {}", ip, e);
+                            } else {
+                                println!("✅ Joint le groupe multicast sur l'interface {}", ip);
+                                success_count += 1;
+                            }
+                        }
                     }
-                    println!("✅ Bind UDP réussi sur la tentative {}", attempts);
+
+                    if success_count == 0 && !interface_ips.is_empty() {
+                         eprintln!("⚠️ Aucun join multicast n'a réussi, nouvelle tentative...");
+                         thread::sleep(Duration::from_secs(1));
+                         continue;
+                    }
+
+                    println!("✅ Bind UDP global réussi (Interfaces actives: {})", success_count);
                     socket = Some(s);
                     break;
                 }
                 Err(e) => {
-                    eprintln!("⚠️ Échec du bind UDP (tentative {}): {}", attempts, e);
+                    eprintln!("⚠️ Échec du bind UDP global (tentative {}): {}", attempts, e);
                     thread::sleep(Duration::from_secs(1));
                 }
             }
@@ -107,13 +121,9 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
         while !stop_flag.load(Ordering::Relaxed) {
             match socket.recv_from(&mut buf) {
                 Ok((size, src)) => {
-                    println!("📦 Paquet UDP reçu ! (taille: {})", size);
                     let payload = &buf[..size];
-
-                    // SAP packets contain a binary header, search for "v=0" which starts the SDP
                     if let Some(pos) = payload.windows(3).position(|w| w == b"v=0") {
                         if let Ok(sdp_content) = std::str::from_utf8(&payload[pos..]) {
-                            println!("✅ SDP parsé avec succès, émission IPC en cours...");
                             app.emit("sdp-discovered", SdpPayload {
                                 source_ip: src.ip().to_string(),
                                 sdp_content: sdp_content.to_string(),
@@ -121,13 +131,16 @@ fn start_sniffing(app: AppHandle, interface_ip: String, state: State<'_, AppStat
                         }
                     }
                 }
-                Err(_) => {
-                    // Timeout is expected, continue loop to check stop flag
-                }
+                Err(_) => {}
             }
         }
 
-        socket.leave_multicast_v4(&sap_addr, &iface_addr).ok();
+        // Cleanup
+        for ip in &interface_ips {
+            if let Ok(iface_addr) = ip.parse::<Ipv4Addr>() {
+                socket.leave_multicast_v4(&sap_addr, &iface_addr).ok();
+            }
+        }
     });
 }
 
