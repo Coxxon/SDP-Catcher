@@ -11,9 +11,6 @@ use tauri::{AppHandle, Emitter, State};
 use manufacturer::identify_manufacturer;
 use pnet::datalink::{self, Channel};
 use pnet::packet::ethernet::{EtherTypes, EthernetPacket};
-use pnet::packet::ipv4::Ipv4Packet;
-use pnet::packet::udp::UdpPacket;
-use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::Packet;
 use socket2::{Domain, Protocol, Socket, Type};
 use std::collections::HashMap;
@@ -228,14 +225,14 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
             let ptp_addr = Ipv4Addr::new(224, 0, 1, 129);
             let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP));
             if let Ok(socket) = socket {
-                socket.set_reuse_address(true).ok();
+                socket.set_reuse_address(true).expect("Failed to set SO_REUSEADDR");
                 #[cfg(not(windows))]
-                socket.set_reuse_port(true).ok();
+                socket.set_reuse_port(true).expect("Failed to set SO_REUSEPORT");
                 
-                socket.set_multicast_loop_v4(true).ok(); // CRITICAL for simulator
+                socket.set_multicast_loop_v4(true).expect("Failed to set IP_MULTICAST_LOOP"); // CRITICAL for simulator
 
                 if socket.bind(&"0.0.0.0:320".parse::<std::net::SocketAddr>().unwrap().into()).is_ok() {
-                    let interfaces = datalink::interfaces();
+                    let interfaces = netdev::get_interfaces();
                     let mut subnets = Vec::new();
 
                     for ip_str in &selected_ips {

@@ -77,7 +77,7 @@ const devices = manufacturers.map(m => {
 
 // Injection d'appareils pour topologie complexe
 devices.push(
-  { name: "Riedel_Artist_1024", ip: "192.168.1.10", interval: 10000, specificPtpId: G_RIEDEL_ID, streams: [{ name: "Artist_Coms_Main", multicast: "239.69.50.1" }] },
+  { name: "Riedel_Artist_1024", ip: "192.168.1.50", interval: 10000, specificPtpId: G_RIEDEL_ID, streams: [{ name: "Artist_Coms_Main", multicast: "239.69.50.1" }] },
   { name: "Bolero_Antenna_BC", ip: "192.168.1.51", interval: 10000, specificPtpId: G_LUMINEX_ID, streams: [{ name: "Bolero_BC_Stream", multicast: "239.69.51.1" }] },
   { name: "Bolero_Antenna_TC", ip: "192.168.1.52", interval: 10000, specificPtpId: G_RIEDEL_ID, streams: [{ name: "Bolero_TC_Stream", multicast: "239.69.52.1" }] }
 );
@@ -148,26 +148,26 @@ server.on('listening', () => {
     }, device.interval);
   });
 
-  // Dedicated PTP Announce Loop (Alternating Riedel/Luminex)
   let ptpToggle = true;
+
+  setInterval(() => {
+    ptpToggle = !ptpToggle;
+    console.log(`[${new Date().toLocaleTimeString()}] 🔄 GMC IDENTITY SWITCHED TO ${ptpToggle ? "RIEDEL" : "LUMINEX"}`);
+  }, 10000); // Toggle every 10s
+
   const PTP_PORT = 320;
   const PTP_ADDR = '224.0.1.129';
 
   setInterval(() => {
     const ptpId = ptpToggle ? G_RIEDEL_ID : G_LUMINEX_ID;
-    const ptpIp = ptpToggle ? '192.168.1.10' : '192.168.1.50';
     const buf = createPtpAnnounceBuffer(ptpId);
     
-    // Note: To truly simulate, we'd need to bind to the correct source IP, 
-    // but here we just send the payload. The backend will see the sender's real IP
-    // UNLESS we mock the resolving IP in discovery_table (which we did).
     server.send(buf, 0, buf.length, PTP_PORT, PTP_ADDR, (err) => {
       if (err) console.error('Error sending PTP Announce:', err);
     });
     
-    console.log(`[${new Date().toLocaleTimeString()}] Sent PTP Announce Buffer for ${ptpToggle ? "RIEDEL" : "LUMINEX"} (${ptpId})`);
-    ptpToggle = !ptpToggle;
   }, 1000); // 1s
+
 });
 
 server.bind(() => {

@@ -1,0 +1,32 @@
+    Checking tauri-app v0.1.0 (D:\Utilisateur\Documents\Sites_web\SDP Catcher\src-tauri)
+warning: unused import: `pnet::packet::ipv4::Ipv4Packet`
+  --> src\lib.rs:14:5
+   |
+14 | use pnet::packet::ipv4::Ipv4Packet;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `pnet::packet::udp::UdpPacket`
+  --> src\lib.rs:15:5
+   |
+15 | use pnet::packet::udp::UdpPacket;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `pnet::packet::ip::IpNextHeaderProtocols`
+  --> src\lib.rs:16:5
+   |
+16 | use pnet::packet::ip::IpNextHeaderProtocols;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0609]: no field `ipv4` on type `&pnet::datalink::NetworkInterface`
+   --> src\lib.rs:248:48
+    |
+248 | ...                   for ipv4 in &iface.ipv4 {
+    |                                          ^^^^ unknown field
+    |
+    = note: available fields are: `name`, `description`, `index`, `mac`, `ips`, `flags`
+
+For more information about this error, try `rustc --explain E0609`.
+warning: `tauri-app` (lib) generated 3 warnings
+error: could not compile `tauri-app` (lib) due to 1 previous error; 3 warnings emitted
