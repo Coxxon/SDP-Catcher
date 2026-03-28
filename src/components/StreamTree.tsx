@@ -45,13 +45,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     const base = "rounded-full aspect-square block";
     switch (status) {
       case "online":
-        return `${base} bg-green-500 shadow-[0_0_2px_rgba(34,197,94,0.2)]`;
+        return `${base} bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.35)]`;
       case "offline":
-        return `${base} bg-red-500 shadow-[0_0_2px_rgba(239,68,68,0.2)]`;
+        return `${base} bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.35)]`;
       case "standby":
-        return `${base} bg-orange-500 shadow-[0_0_2px_rgba(249,115,22,0.2)]`;
+        return `${base} bg-orange-500 shadow-[0_0_4px_rgba(249,115,22,0.35)]`;
       case "partial":
-        return `${base} bg-orange-500 shadow-[0_0_2px_rgba(249,115,22,0.2)] animate-blink`;
+        return `${base} bg-orange-500 shadow-[0_0_4px_rgba(249,115,22,0.35)] animate-blink`;
       default:
         return `${base} bg-neutral-600 opacity-50`;
     }
