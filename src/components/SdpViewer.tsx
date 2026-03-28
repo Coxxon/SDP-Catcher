@@ -105,12 +105,16 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   };
 
   const streamInfo = parseStreamInfo(sdp);
-  const gmMac = streamInfo?.masterClock ? ptpIdToMac(streamInfo.masterClock) : "";
-  const resolved = arpTable[gmMac];
+  const gmId = streamInfo?.masterClock || "";
+  const gmMac = gmId ? ptpIdToMac(gmId) : "";
+  const resolvedIp = sourceIp;
+  
+  // Exhaustive lookup for simulated or real environments
+  const resolved = arpTable[gmId] || arpTable[gmMac] || (resolvedIp ? arpTable[resolvedIp] : null);
 
   // Logic for display: Name > IP > MAC
   const hasName = resolved?.name && resolved.name !== "---";
-  const hasIp = !!resolved?.ip;
+  const hasIp = !!resolved?.ip || !!resolvedIp;
 
   const cycleDisplayMode = () => {
     if (!hasIp && !hasName) return; // Only MAC available, no toggle

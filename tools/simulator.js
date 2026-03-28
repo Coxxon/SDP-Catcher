@@ -167,7 +167,7 @@ server.on('listening', () => {
     
     console.log(`[${new Date().toLocaleTimeString()}] Sent PTP Announce Buffer for ${ptpToggle ? "RIEDEL" : "LUMINEX"} (${ptpId})`);
     ptpToggle = !ptpToggle;
-  }, 2000);
+  }, 1000); // 1s
 });
 
 server.bind(() => {

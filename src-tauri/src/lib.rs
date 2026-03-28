@@ -263,6 +263,12 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                 } else {
                                     ptp_id.clone()
                                 }
+                            } else if let Some(info) = table.get(&source_ip) {
+                                if !info.name.is_empty() && info.name != "---" {
+                                    info.name.clone()
+                                } else {
+                                    source_ip.clone()
+                                }
                             } else {
                                 ptp_id.clone()
                             }
@@ -358,10 +364,11 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                         };
 
                         let (mac, _oui) = get_mac_from_arp(&origin_ip);
+                        let key = if mac != "Unknown" { mac.clone() } else { origin_ip.clone() };
 
-                        if mac != "Unknown" {
+                        {
                             let mut table = discovery_sap.lock().unwrap();
-                            let entry = table.entry(mac.clone()).or_insert(DeviceInfo {
+                            let entry = table.entry(key.clone()).or_insert(DeviceInfo {
                                 ip: origin_ip.clone(),
                                 name: best_name.clone(),
                             });
@@ -373,7 +380,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                 if best_name != "---" {
                                     entry.name = best_name.clone();
                                 }
-                                app.emit("discovery-update", (mac.clone(), entry.clone()))
+                                app.emit("discovery-update", (key.clone(), entry.clone()))
                                     .ok();
                             }
                         }
