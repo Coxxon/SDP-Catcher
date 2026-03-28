@@ -106,6 +106,17 @@ const generatePayload = (deviceName, deviceIp, streamName, multicastIp, specific
   );
 };
 
+const createPtpAnnounceBuffer = (ptpId) => {
+  const buf = Buffer.alloc(64);
+  buf[0] = 0x0B; // Announce messageType
+  // ClockIdentity offset 20
+  const hex = ptpId.replace(/-/g, '');
+  for (let i = 0; i < 8; i++) {
+    buf[20 + i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+  }
+  return buf;
+};
+
 server.on('error', (err) => {
   console.error(`Simulator error:\n${err.stack}`);
   server.close();
@@ -137,10 +148,25 @@ server.on('listening', () => {
     }, device.interval);
   });
 
-  // PTP Clock Heartbeat (Global)
+  // Dedicated PTP Announce Loop (Alternating Riedel/Luminex)
+  let ptpToggle = true;
+  const PTP_PORT = 320;
+  const PTP_ADDR = '224.0.1.129';
+
   setInterval(() => {
-    const ptpPayload = Buffer.from('PTP_MOCK|00-11-22-FF-FE-33-44-55|192.168.1.100');
-    server.send(ptpPayload, 0, ptpPayload.length, PTP_PORT, PTP_MULTICAST_ADDR);
+    const ptpId = ptpToggle ? G_RIEDEL_ID : G_LUMINEX_ID;
+    const ptpIp = ptpToggle ? '192.168.1.10' : '192.168.1.50';
+    const buf = createPtpAnnounceBuffer(ptpId);
+    
+    // Note: To truly simulate, we'd need to bind to the correct source IP, 
+    // but here we just send the payload. The backend will see the sender's real IP
+    // UNLESS we mock the resolving IP in discovery_table (which we did).
+    server.send(buf, 0, buf.length, PTP_PORT, PTP_ADDR, (err) => {
+      if (err) console.error('Error sending PTP Announce:', err);
+    });
+    
+    console.log(`[${new Date().toLocaleTimeString()}] Sent PTP Announce Buffer for ${ptpToggle ? "RIEDEL" : "LUMINEX"} (${ptpId})`);
+    ptpToggle = !ptpToggle;
   }, 2000);
 });
 

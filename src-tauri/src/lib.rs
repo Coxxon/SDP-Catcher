@@ -252,6 +252,26 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                     .ok();
                             }
                         }
+
+                        // Resolve Best Identifier for Footer (Name > IP > PTP ID)
+                        let display_name = {
+                            if let Some(info) = table.get(&ptp_id) {
+                                if !info.name.is_empty() && info.name != "---" {
+                                    info.name.clone()
+                                } else if !info.ip.is_empty() {
+                                    info.ip.clone()
+                                } else {
+                                    ptp_id.clone()
+                                }
+                            } else {
+                                ptp_id.clone()
+                            }
+                        };
+
+                        app_ptp.emit("ptp-clock-update", PtpPayload {
+                            name: display_name,
+                            ip: source_ip.clone(),
+                        }).ok();
                     }
                 }
             }
