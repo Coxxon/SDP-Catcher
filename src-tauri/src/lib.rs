@@ -177,7 +177,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                         // car en simulation locale, l'IP UDP source est toujours 127.0.0.1 ou l'IP du PC.
                         let mut origin_ip = src.ip().to_string();
                         for line in sdp_content.lines() {
-                            if line.startsWith("o=") {
+                            if line.starts_with("o=") {
                                 let parts: Vec<&str> = line.split_whitespace().collect();
                                 if parts.len() >= 6 {
                                     origin_ip = parts[5].to_string();
