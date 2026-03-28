@@ -11,6 +11,9 @@ use tauri::{AppHandle, Emitter, State};
 use manufacturer::identify_manufacturer;
 use pnet::datalink::{self, Channel};
 use pnet::packet::ethernet::{EtherTypes, EthernetPacket};
+use pnet::packet::ipv4::Ipv4Packet;
+use pnet::packet::udp::UdpPacket;
+use pnet::packet::ip::IpNextHeaderProtocols;
 use pnet::packet::Packet;
 use std::collections::HashMap;
 
@@ -35,6 +38,7 @@ struct PtpPayload {
     ptp_id: String,
     name: String,
     ip: String,
+    interface_ip: String,
 }
 
 #[derive(Serialize, Clone)]
@@ -162,120 +166,12 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
             thread::sleep(Duration::from_secs(1));
         }
 
-        // Try binding PTP
-        for _ in 0..5 {
-            if stop_flag.load(Ordering::Relaxed) {
-                return;
-            }
-            if let Ok(s) = UdpSocket::bind(("0.0.0.0", ptp_port)) {
-                s.set_read_timeout(Some(Duration::from_millis(500))).ok();
-                for ip in &interface_ips {
-                    if let Ok(iface_addr) = ip.parse::<Ipv4Addr>() {
-                        s.join_multicast_v4(&ptp_addr, &iface_addr).ok();
-                    }
-                }
-                ptp_socket = Some(s);
-                break;
-            }
-            thread::sleep(Duration::from_secs(1));
-        }
-
         let sap_socket = match sap_socket {
             Some(s) => s,
             None => return,
         };
-        let ptp_socket = match ptp_socket {
-            Some(s) => s,
-            None => return,
-        };
 
-        // Spawn PTP thread with Gleaning
-        let stop_flag_ptp = Arc::clone(&stop_flag);
-        let app_ptp = app.clone();
-        let discovery_ptp = Arc::clone(&discovery_table_arc);
-        thread::spawn(move || {
-            let mut buf = [0u8; 1024];
-            while !stop_flag_ptp.load(Ordering::Relaxed) {
-                if let Ok((size, src)) = ptp_socket.recv_from(&mut buf) {
-                    let source_ip = src.ip().to_string();
-                    let payload = &buf[..size];
-
-                    // PTP Gleaning: Extract ClockIdentity from Announce (offset 20 in header)
-                    if payload.len() >= 44 && payload[0] & 0x0F == 0x0B {
-                        // Announce Check
-                        let clock_id = &payload[20..28];
-                        let ptp_id = clock_id
-                            .iter()
-                            .map(|b| format!("{:02X}", b))
-                            .collect::<Vec<_>>()
-                            .join("-");
-
-                        // Extract MAC from EUI-64 (00-11-22-FF-FE-33-44-55 -> 00:11:22:33:44:55)
-                        let mac = format!(
-                            "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
-                            clock_id[0],
-                            clock_id[1],
-                            clock_id[2],
-                            clock_id[5],
-                            clock_id[6],
-                            clock_id[7]
-                        );
-
-                        let mut table = discovery_ptp.lock().unwrap();
-                        let mut updated = false;
-
-                        {
-                            let mac_entry = table.entry(mac.clone()).or_insert(DeviceInfo {
-                                ip: source_ip.clone(),
-                                name: "---".to_string(),
-                            });
-                            if mac_entry.ip != source_ip {
-                                mac_entry.ip = source_ip.clone();
-                                updated = true;
-                            }
-                        }
-
-                        {
-                            let ptp_entry = table.entry(ptp_id.clone()).or_insert(DeviceInfo {
-                                ip: source_ip.clone(),
-                                name: "---".to_string(),
-                            });
-                            if ptp_entry.ip != source_ip {
-                                ptp_entry.ip = source_ip.clone();
-                                updated = true;
-                            }
-                        }
-
-                        if updated {
-                            if let Some(mac_entry) = table.get(&mac) {
-                                app_ptp
-                                    .emit("discovery-update", (mac.clone(), mac_entry.clone()))
-                                    .ok();
-                            }
-                        }
-
-                        // Send raw metadata for Frontend-side resolution
-                        let name = {
-                            if let Some(info) = table.get(&ptp_id) {
-                                info.name.clone()
-                            } else if let Some(info) = table.get(&source_ip) {
-                                info.name.clone()
-                            } else {
-                                "---".to_string()
-                            }
-                        };
-
-                        app_ptp.emit("ptp-clock-update", PtpPayload {
-                            ptp_id: ptp_id.clone(),
-                            name,
-                            ip: source_ip.clone(),
-                        }).ok();
-                    }
-                }
-            }
-        });
-
-        // Spawn LLDP Sniffer thread
+        // Spawn LLDP/PTP Sniffer thread
         for ip in &interface_ips {
             let stop_flag_lldp = Arc::clone(&stop_flag);
             let discovery_lldp = Arc::clone(&discovery_table_arc);
@@ -300,6 +196,8 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                     while !stop_flag_lldp.load(Ordering::Relaxed) {
                         if let Ok(packet) = rx.next() {
                             let eth = EthernetPacket::new(packet).unwrap();
+                            
+                            // LLDP (0x88CC)
                             if eth.get_ethertype() == EtherTypes::Lldp {
                                 if let Some((mac, name, ip)) = parse_lldp(eth.payload()) {
                                     let mut table = discovery_lldp.lock().unwrap();
@@ -313,6 +211,40 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                         app_lldp
                                             .emit("discovery-update", (mac, entry.clone()))
                                             .ok();
+                                    }
+                                }
+                            }
+                            
+                            // PTP (UDP 320)
+                            if eth.get_ethertype() == EtherTypes::Ipv4 {
+                                if let Some(ipv4) = Ipv4Packet::new(eth.payload()) {
+                                    if ipv4.get_next_level_protocol() == IpNextHeaderProtocols::Udp {
+                                        if let Some(udp) = UdpPacket::new(ipv4.payload()) {
+                                            if udp.get_destination() == 320 {
+                                                let payload = udp.payload();
+                                                if payload.len() >= 44 && payload[0] & 0x0F == 0x0B {
+                                                    let clock_id = &payload[20..28];
+                                                    let ptp_id = clock_id.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("-");
+                                                    let source_ip = ipv4.get_source().to_string();
+                                                    
+                                                    let mut table = discovery_lldp.lock().unwrap();
+                                                    let name = if let Some(info) = table.get(&ptp_id) {
+                                                        info.name.clone()
+                                                    } else if let Some(info) = table.get(&source_ip) {
+                                                        info.name.clone()
+                                                    } else {
+                                                        "---".to_string()
+                                                    };
+                                                    
+                                                    app_lldp.emit("ptp-clock-update", PtpPayload {
+                                                        ptp_id,
+                                                        name,
+                                                        ip: source_ip,
+                                                        interface_ip: target_ip.clone(),
+                                                    }).ok();
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

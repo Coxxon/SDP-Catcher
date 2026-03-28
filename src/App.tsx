@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { InterfaceList } from "./components/InterfaceList";
@@ -47,7 +47,6 @@ function App() {
   const [isSniffing, setIsSniffing] = useState(false);
   const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
-  const [masterClocks, setMasterClocks] = useState<{name: string, ip: string}[]>([]);
   const [selectedStream, setSelectedStream] = useState<Stream | null>(null);
   const [unknownTimeout, setUnknownTimeout] = useState(60);
   const [footerDisplayMode, setFooterDisplayMode] = useState<'auto' | 'name' | 'ip' | 'mac'>('auto');
@@ -55,6 +54,8 @@ function App() {
   const [lastPtpUpdate, setLastPtpUpdate] = useState(0);
   const [isPtpActive, setIsPtpActive] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [arpTable, setArpTable] = useState<Record<string, { ip: string; name: string }>>({});
+  const previousGmcId = useRef<string | null>(null);
 
   const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string; sessionInfo: string | null } => {
     const lines = raw.split(/\r?\n/);
@@ -188,26 +189,36 @@ function App() {
         }
       });
     });
+ 
+    const unlistenDiscovery = listen<[string, { ip: string; name: string }]>(
+      "discovery-update",
+      (event) => {
+        const [key, info] = event.payload;
+        setArpTable((prev) => ({ ...prev, [key]: info }));
+      }
+    );
 
-    const unlistenPtp = listen<{ptp_id: string, name: string, ip: string}>("ptp-clock-update", (event) => {
-      const { ptp_id, name, ip } = event.payload;
+    const unlistenPtp = listen<{ptp_id: string, name: string, ip: string, interface_ip: string}>("ptp-clock-update", (event) => {
+      const { ptp_id, interface_ip } = event.payload;
       
-      // Trigger orange transition on GMC switch
-      if (lastPtpInfo.ptp_id !== '---' && ptp_id !== lastPtpInfo.ptp_id) {
+      // Interface Isolation
+      if (interface_ip !== activeIp) return;
+
+      // Trigger orange transition on GMC switch (using useRef for immediate check)
+      if (previousGmcId.current !== null && ptp_id !== previousGmcId.current) {
         setIsTransitioning(true);
         setTimeout(() => setIsTransitioning(false), 1500);
       }
+      previousGmcId.current = ptp_id;
 
       setLastPtpInfo(event.payload);
       setLastPtpUpdate(Date.now());
       setIsPtpActive(true);
-      if (name !== '---') {
-        setMasterClocks([{ name, ip }]);
-      }
     });
 
     return () => {
       unlistenSdp.then(f => (f as () => void)());
+      unlistenDiscovery.then(f => (f as () => void)());
       unlistenPtp.then(f => (f as () => void)());
     };
   }, []);
@@ -230,20 +241,28 @@ function App() {
     }
   };
 
-  const getFooterGmcText = () => {
+   const getFooterGmcText = () => {
     if (lastPtpInfo.ptp_id === '---') return "Searching...";
     
-    const hasName = lastPtpInfo.name && lastPtpInfo.name !== '---';
-    const hasIp = lastPtpInfo.ip && lastPtpInfo.ip !== '---';
-    const mac = ptpIdToMac(lastPtpInfo.ptp_id);
+    // Dynamic IP/Name Resolution from discoveryTable
+    const ptpId = lastPtpInfo.ptp_id;
+    const resolved = arpTable[ptpId];
+    
+    // Use resolved info if available, otherwise fallback to last PTP packet payload
+    const name = resolved?.name && resolved.name !== '---' ? resolved.name : lastPtpInfo.name;
+    const ip = resolved?.ip && resolved.ip !== '---' ? resolved.ip : lastPtpInfo.ip;
+    const mac = ptpIdToMac(ptpId);
+
+    const hasName = name && name !== '---';
+    const hasIp = ip && ip !== '---';
 
     if (footerDisplayMode === 'auto') {
-      if (hasName) return lastPtpInfo.name;
-      if (hasIp) return lastPtpInfo.ip;
+      if (hasName) return name;
+      if (hasIp) return ip;
       return mac;
     }
-    if (footerDisplayMode === 'name') return hasName ? lastPtpInfo.name : mac;
-    if (footerDisplayMode === 'ip') return hasIp ? lastPtpInfo.ip : mac;
+    if (footerDisplayMode === 'name') return hasName ? name : mac;
+    if (footerDisplayMode === 'ip') return hasIp ? ip : mac;
     if (footerDisplayMode === 'mac') return mac;
     return mac;
   };
