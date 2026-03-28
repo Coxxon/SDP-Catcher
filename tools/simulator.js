@@ -54,6 +54,10 @@ const manufacturers = [
   { name: "Unknown_Device", interval: 60000 } // Le test du Fallback
 ];
 
+// Topologie PTP Spécifique
+const G_RIEDEL_ID = '00-10-5f-ff-fe-aa-bb-cc';
+const G_LUMINEX_ID = '00-d0-bb-ff-fe-11-22-33';
+
 // Génération automatique du tableau devices
 let currentIpSuffix = 121;
 let currentMulticastSubnet = 10;
@@ -71,14 +75,21 @@ const devices = manufacturers.map(m => {
   };
 });
 
+// Injection d'appareils pour topologie complexe
+devices.push(
+  { name: "Riedel_Artist_1024", ip: "192.168.1.10", interval: 10000, specificPtpId: G_RIEDEL_ID, streams: [{ name: "Artist_Coms_Main", multicast: "239.69.50.1" }] },
+  { name: "Bolero_Antenna_BC", ip: "192.168.1.51", interval: 10000, specificPtpId: G_LUMINEX_ID, streams: [{ name: "Bolero_BC_Stream", multicast: "239.69.51.1" }] },
+  { name: "Bolero_Antenna_TC", ip: "192.168.1.52", interval: 10000, specificPtpId: G_RIEDEL_ID, streams: [{ name: "Bolero_TC_Stream", multicast: "239.69.52.1" }] }
+);
+
 const generatePtpId = (ip) => {
   const parts = ip.split('.');
   const last = parseInt(parts[3]).toString(16).padStart(2, '0').toUpperCase();
   return `00-11-22-FF-FE-88-88-${last}`;
 };
 
-const generatePayload = (deviceName, deviceIp, streamName, multicastIp) => {
-  const ptpId = generatePtpId(deviceIp);
+const generatePayload = (deviceName, deviceIp, streamName, multicastIp, specificPtpId) => {
+  const ptpId = specificPtpId || generatePtpId(deviceIp);
   return Buffer.from(
     'SAP_HEADER_MOCK\n' +
     'v=0\n' +
@@ -109,7 +120,7 @@ server.on('listening', () => {
   devices.forEach(device => {
     // Initial send so we don't wait for the first interval
     device.streams.forEach(stream => {
-      const payload = generatePayload(device.name, device.ip, stream.name, stream.multicast);
+      const payload = generatePayload(device.name, device.ip, stream.name, stream.multicast, device.specificPtpId);
       server.send(payload, 0, payload.length, PORT, MULTICAST_ADDR, (err) => {
         if (err) console.error(`Error sending ${stream.name}:`, err);
       });
@@ -117,7 +128,7 @@ server.on('listening', () => {
 
     setInterval(() => {
       device.streams.forEach(stream => {
-        const payload = generatePayload(device.name, device.ip, stream.name, stream.multicast);
+        const payload = generatePayload(device.name, device.ip, stream.name, stream.multicast, device.specificPtpId);
         server.send(payload, 0, payload.length, PORT, MULTICAST_ADDR, (err) => {
           if (err) console.error(`Error sending ${stream.name}:`, err);
         });

@@ -280,6 +280,16 @@ fn get_arp_table() -> std::collections::HashMap<String, DeviceInfo> {
         table.insert(mac, DeviceInfo { ip, name });
     }
 
+    // Specialized PTP Topology Mocks (Riedel/Luminex)
+    table.insert("00:10:5F:AA:BB:CC".to_string(), DeviceInfo { 
+        ip: "192.168.1.10".to_string(), 
+        name: "Riedel-Artist-GMC".to_string() 
+    });
+    table.insert("00:D0:BB:11:22:33".to_string(), DeviceInfo { 
+        ip: "192.168.1.50".to_string(), 
+        name: "Luminex-BC-Switch".to_string() 
+    });
+
     let output = std::process::Command::new("arp")
         .arg("-a")
         .output();
