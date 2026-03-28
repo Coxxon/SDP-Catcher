@@ -17,7 +17,7 @@ export function InterfaceList({ activeIp, onInterfaceSelect }: InterfaceListProp
   const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
 
   useEffect(() => {
-    invoke<InterfaceInfo[]>("get_interfaces")
+    invoke<InterfaceInfo[]>("get_network_interfaces")
       .then(setInterfaces)
       .catch(console.error);
   }, []);

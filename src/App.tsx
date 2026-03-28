@@ -107,7 +107,7 @@ function App() {
     setActiveIp(ip);
     setDevices([]);
     try {
-      await invoke("start_sniffing", { interfaceIp: ip });
+      await invoke("start_sniffing", { interface_ip: ip });
     } catch (err) {
       console.error("Failed to start sniffing", err);
     }
