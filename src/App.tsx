@@ -254,31 +254,34 @@ function App() {
     : null;
 
   return (
-    <main className="flex h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none">
-      <InterfaceList
-        activeIp={activeIp}
-        isSniffing={isSniffing}
-        interfaces={interfaces}
-        devices={devices}
-        onInterfaceSelect={handleInterfaceSelect}
-        setIsSniffing={setIsSniffing}
-        onRefreshInterfaces={refreshInterfaces}
-        onStartSniffing={startGlobalSniffing}
-      />
-      <StreamTree
-        devices={filteredDevices}
-        onStreamSelect={setSelectedStream}
-        selectedStreamId={selectedStream?.id || null}
-        onClearOffline={clearOfflineStreams}
-        isSniffing={isSniffing}
-      />
-      <SdpViewer
-        sdp={selectedStream?.sdpContent || null}
-        sourceIp={selectedStream ? `${selectedStream.name} (${selectedStream.multicastIp})` : undefined}
-      />
+    <main className="flex flex-col h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none">
+      {/* Dynamic Workspace Container */}
+      <div className="flex flex-1 overflow-hidden">
+        <InterfaceList
+          activeIp={activeIp}
+          isSniffing={isSniffing}
+          interfaces={interfaces}
+          devices={devices}
+          onInterfaceSelect={handleInterfaceSelect}
+          setIsSniffing={setIsSniffing}
+          onRefreshInterfaces={refreshInterfaces}
+          onStartSniffing={startGlobalSniffing}
+        />
+        <StreamTree
+          devices={filteredDevices}
+          onStreamSelect={setSelectedStream}
+          selectedStreamId={selectedStream?.id || null}
+          onClearOffline={clearOfflineStreams}
+          isSniffing={isSniffing}
+        />
+        <SdpViewer
+          sdp={selectedStream?.sdpContent || null}
+          sourceIp={selectedStream ? `${selectedStream.name} (${selectedStream.multicastIp})` : undefined}
+        />
+      </div>
       
-      {/* Footer Management */}
-      <footer className="fixed bottom-0 left-0 w-full h-7 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between px-4 z-50">
+      {/* Fixed Footer Bar */}
+      <footer className="h-7 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between px-4 z-50 shrink-0">
         <div className="flex items-center gap-2">
             <div className={`w-1.5 h-1.5 rounded-full ${activeClock ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]' : 'bg-red-500 animate-pulse'}`} />
             <span className="text-[10px] text-zinc-500 font-bold tracking-tight uppercase">

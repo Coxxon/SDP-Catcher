@@ -141,7 +141,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                     <div className="px-8 py-1.5 bg-neutral-900/50 border-b border-neutral-800/30 flex flex-col gap-0.5">
                       <div className="flex items-center justify-between">
                         <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">Manufacturer</span>
-                        <span className={`text-[10px] ${device.manufacturer === 'Unknown' ? 'text-neutral-600 italic' : 'text-blue-400 font-bold'}`}>
+                        <span className={`text-[10px] ${device.manufacturer === 'Unknown' ? 'text-neutral-600 italic' : 'text-neutral-200 font-bold'}`}>
                           {device.manufacturer}
                           {device.mac !== 'Unknown' && ` (${device.mac.split(':').slice(0, 3).join(':')})`}
                           {device.manufacturer === 'Unknown' && ' (fallback)'}
@@ -149,7 +149,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-[9px] text-neutral-500 uppercase font-bold tracking-wider">SAP Timeout</span>
-                        <span className="text-[10px] text-neutral-300 font-mono">
+                        <span className="text-[10px] text-neutral-200 font-mono">
                           {device.sapTimeoutMs / 1000}s
                           {device.manufacturer === 'Unknown' && ' (user-defined)'}
                         </span>
