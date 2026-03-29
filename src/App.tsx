@@ -535,7 +535,7 @@ function App() {
             {/* PTP Domain Control */}
             <div className="flex items-center gap-2">
                 <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">PTP DOMAIN</span>
-                <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[2.25rem]">
+                <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-9">
                     <input 
                         type="text" 
                         value={ptpDomainDraft}
@@ -548,7 +548,7 @@ function App() {
                             (e.target as HTMLInputElement).blur();
                           }
                         }}
-                        className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none translate-y-[0.0625rem]"
+                        className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none translate-y-0.25"
                         title="0-255"
                     />
                 </div>
@@ -557,7 +557,7 @@ function App() {
             {/* SAP Timeout Control */}
             <div className="flex items-center gap-2">
                 <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">DEFAULT SAP TIMEOUT</span>
-                <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[2.25rem]">
+                <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-9">
                     <input 
                         type="text" 
                         value={sapTimeoutDraft}
@@ -570,7 +570,7 @@ function App() {
                             (e.target as HTMLInputElement).blur();
                           }
                         }}
-                        className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none translate-y-[0.0625rem]"
+                        className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none translate-y-0.25"
                         title="60-300"
                     />
                     <span className="text-[0.5625rem] text-zinc-600 font-bold ml-0.5">s</span>

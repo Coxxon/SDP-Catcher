@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { Minus, Square, X, Activity } from "lucide-react";
+import { Minus, Square, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const appWindow = getCurrentWindow();
@@ -31,7 +31,7 @@ export function TitleBar() {
       <div data-tauri-drag-region className="absolute inset-0 z-0" onDoubleClick={() => appWindow.toggleMaximize()} />
 
       <div className="flex items-center gap-2 pointer-events-none relative z-10">
-        <Activity size={14} className="text-zinc-600" />
+        <img src="/favicon-32x32.png" className="w-3.5 h-3.5" alt="SDP Catcher Logo" />
         <span className="text-[0.625rem] font-bold text-zinc-500 tracking-widest uppercase">SDP Catcher</span>
       </div>
 

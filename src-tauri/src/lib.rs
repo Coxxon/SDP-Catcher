@@ -15,6 +15,9 @@ use pnet::packet::Packet;
 use socket2::{Domain, Protocol, Socket, Type};
 use std::collections::HashMap;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
 #[derive(Serialize)]
 pub struct NetworkInterface {
     name: String,
@@ -55,7 +58,11 @@ pub struct AppState {
 
 fn get_mac_from_arp(ip: &str) -> (String, String) {
     // We use a global scan 'arp -a' for maximum reliability across Windows versions
-    let output = std::process::Command::new("arp").arg("-a").output();
+    let mut cmd = std::process::Command::new("arp");
+    cmd.arg("-a");
+    #[cfg(windows)]
+    cmd.creation_flags(0x08000000);
+    let output = cmd.output();
 
     if let Ok(out) = output {
         let stdout = String::from_utf8_lossy(&out.stdout);
@@ -482,6 +489,8 @@ fn set_network_ip(
     mask: Option<String>,
 ) -> Result<String, String> {
     let mut cmd = std::process::Command::new("netsh");
+    #[cfg(windows)]
+    cmd.creation_flags(0x08000000);
     let mut args = vec!["interface", "ip", "set", "address", interface_name.as_str()];
     if is_dhcp {
         args.push("dhcp");
@@ -511,7 +520,11 @@ fn set_network_ip(
 fn get_arp_table(state: State<'_, AppState>) -> HashMap<String, DeviceInfo> {
     let mut table = state.discovery_table.lock().unwrap().clone();
 
-    let output = std::process::Command::new("arp").arg("-a").output();
+    let mut cmd = std::process::Command::new("arp");
+    cmd.arg("-a");
+    #[cfg(windows)]
+    cmd.creation_flags(0x08000000);
+    let output = cmd.output();
 
     if let Ok(out) = output {
         let stdout = String::from_utf8_lossy(&out.stdout);
