@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp, Search, X } from "lucide-react";
+import { invoke } from "@tauri-apps/api/core";
 import { Stream, Device } from "../App";
 
 import { manufacturerLogos } from "./ManufacturerLogos";
@@ -16,8 +17,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   const [expandedDevices, setExpandedDevices] = useState<string[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [customTimeouts, setCustomTimeouts] = useState<Record<string, number>>({});
-  const [editingTimeout, setEditingTimeout] = useState<string | null>(null);
+  const [useDefaultTimeout, setUseDefaultTimeout] = useState<Record<string, boolean>>({});
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -26,6 +26,16 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
       searchInputRef.current.focus();
     }
   }, [isSearchOpen]);
+
+  const handleTimeoutToggle = async (ip: string) => {
+    const newState = !useDefaultTimeout[ip];
+    setUseDefaultTimeout(prev => ({ ...prev, [ip]: newState }));
+    try {
+      await invoke('set_device_timeout_mode', { ip, useDefault: newState });
+    } catch (e) {
+      console.error("Failed to sync timeout mode with backend", e);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -91,19 +101,16 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     onStreamSelect(stream);
   };
 
-  const isStreamOnline = (stream: Stream, deviceIp: string) => {
-    const effectiveTimeout = customTimeouts[deviceIp] ? (customTimeouts[deviceIp] * 1000) : stream.sapTimeoutMs;
-    return Date.now() - stream.lastSeen <= effectiveTimeout;
-  };
+  const isStreamOnline = (stream: Stream) => Date.now() - stream.lastSeen <= stream.sapTimeoutMs;
 
-  const getStreamStatus = (stream: Stream, deviceIp: string) => {
+  const getStreamStatus = (stream: Stream) => {
     if (!isSniffing) return "standby";
-    return isStreamOnline(stream, deviceIp) ? "online" : "offline";
+    return isStreamOnline(stream) ? "online" : "offline";
   };
 
   const getDeviceStatus = (device: Device) => {
     if (!isSniffing) return "standby";
-    const statuses = device.streams.map(s => isStreamOnline(s, device.ip));
+    const statuses = device.streams.map(s => isStreamOnline(s));
     const allOnline = statuses.every(s => s === true);
     const allOffline = statuses.every(s => s === false);
 
@@ -254,61 +261,27 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                           {device.manufacturer === 'Unknown' && ' (fallback)'}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between group/sap h-4.5">
-                        <span 
-                          onClick={() => {
-                            if (customTimeouts[device.ip]) {
-                              const updated = { ...customTimeouts };
-                              delete updated[device.ip];
-                              setCustomTimeouts(updated);
-                            }
-                          }}
-                          className={`text-[0.5625rem] uppercase font-bold tracking-wider whitespace-nowrap transition-colors ${
-                            customTimeouts[device.ip] 
-                              ? 'text-orange-500 cursor-pointer hover:text-orange-400' 
-                              : 'text-neutral-500 cursor-default'
-                          }`}
-                          title={customTimeouts[device.ip] ? "Override active. Click to reset to default" : ""}
-                        >
-                          SAP Timeout {customTimeouts[device.ip] ? "" : "(default)"}
+                      <div 
+                        onClick={() => handleTimeoutToggle(device.ip)}
+                        className="flex items-center justify-between group/sap h-4.5 cursor-pointer hover:bg-white/5 px-2 -mx-2 rounded transition-colors"
+                        title="Click to toggle between strict OUI timeout and user-defined global timeout"
+                      >
+                        <span className={`text-[0.5625rem] uppercase font-bold tracking-wider whitespace-nowrap transition-colors ${
+                          useDefaultTimeout[device.ip] ? 'text-orange-500' : 'text-neutral-500'
+                        }`}>
+                          SAP Timeout {useDefaultTimeout[device.ip] ? "(GLOBAL)" : "(OUI)"}
                         </span>
                         
-                        {editingTimeout === device.ip ? (
-                          <input
-                            autoFocus
-                            type="number"
-                            min="60"
-                            max="300"
-                            defaultValue={customTimeouts[device.ip] || (device.sapTimeoutMs / 1000)}
-                            className="bg-black/50 border border-neutral-700 text-[0.625rem] font-mono text-right text-white placeholder-zinc-500 outline-none w-10 appearance-none rounded px-1 -mr-1"
-                            onBlur={(e) => {
-                              const val = Math.min(300, Math.max(60, parseInt(e.target.value) || 60));
-                              setCustomTimeouts(prev => ({ ...prev, [device.ip]: val }));
-                              setEditingTimeout(null);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                (e.target as HTMLInputElement).blur(); // Triggers onBlur logic
-                              } else if (e.key === 'Escape') {
-                                setEditingTimeout(null);
-                              }
-                            }}
-                          />
-                        ) : (
-                          <span 
-                            onClick={() => setEditingTimeout(device.ip)}
-                            className="text-[0.625rem] text-neutral-200 font-mono whitespace-nowrap cursor-pointer hover:text-white hover:bg-white/10 px-1 rounded transition-colors -mr-1"
-                            title="Click to override timeout for this device"
-                          >
-                            {customTimeouts[device.ip] || (device.sapTimeoutMs / 1000)}s
-                            {!customTimeouts[device.ip] && device.manufacturer === 'Unknown' && ' (user-defined)'}
-                          </span>
-                        )}
+                        <span className={`text-[0.625rem] font-mono whitespace-nowrap transition-colors ${
+                          useDefaultTimeout[device.ip] ? 'text-orange-500 font-bold' : 'text-neutral-200'
+                        }`}>
+                          {device.sapTimeoutMs / 1000}s
+                        </span>
                       </div>
                     </div>
 
                     {[...device.streams].sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
-                      const streamStatus = getStreamStatus(stream, device.ip);
+                      const streamStatus = getStreamStatus(stream);
                       const streamStatusClass = getStatusClasses(streamStatus);
 
                       return (

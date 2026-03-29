@@ -50,6 +50,7 @@ pub struct AppState {
     sniffer_stop_flag: Mutex<Option<Arc<AtomicBool>>>,
     default_unknown_timeout_s: Mutex<u64>,
     discovery_table: Arc<Mutex<HashMap<String, DeviceInfo>>>,
+    device_timeout_modes: Mutex<HashMap<String, bool>>,
 }
 
 fn get_mac_from_arp(ip: &str) -> (String, String) {
@@ -377,6 +378,20 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                         }
 
                         let mfr_enum = identify_manufacturer(&mac);
+                        
+                        // Dynamically retrieve the latest state for this IP specifically to allow hot-toggling without app restart
+                        let use_global = {
+                            let state = app.state::<AppState>();
+                            let map = state.device_timeout_modes.lock().unwrap();
+                            map.get(&origin_ip).copied().unwrap_or(false)
+                        };
+
+                        let sap_timeout_ms = if use_global {
+                            default_unknown_timeout_s * 1000
+                        } else {
+                            mfr_enum.default_timeout_ms(default_unknown_timeout_s)
+                        };
+
                         app.emit(
                             "sdp-discovered",
                             SdpPayload {
@@ -384,8 +399,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                 sdp_content: sdp_content.to_string(),
                                 mac,
                                 manufacturer: mfr_enum.to_string(),
-                                sap_timeout_ms: mfr_enum
-                                    .default_timeout_ms(default_unknown_timeout_s),
+                                sap_timeout_ms,
                             },
                         )
                         .ok();
@@ -535,6 +549,12 @@ fn set_window_constraints(window: tauri::Window, collapsed: bool, zoom_level: f6
     }
 }
 
+#[tauri::command]
+fn set_device_timeout_mode(ip: String, use_default: bool, state: State<'_, AppState>) {
+    let mut map = state.device_timeout_modes.lock().unwrap();
+    map.insert(ip, use_default);
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -543,6 +563,7 @@ pub fn run() {
             sniffer_stop_flag: Mutex::new(None),
             default_unknown_timeout_s: Mutex::new(60),
             discovery_table: Arc::new(Mutex::new(HashMap::new())),
+            device_timeout_modes: Mutex::new(HashMap::new()),
         })
         .invoke_handler(tauri::generate_handler![
             get_network_interfaces,
@@ -551,7 +572,8 @@ pub fn run() {
             stop_sniffing,
             set_network_ip,
             set_unknown_timeout,
-            set_window_constraints
+            set_window_constraints,
+            set_device_timeout_mode
         ])
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
