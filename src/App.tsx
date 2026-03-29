@@ -124,7 +124,14 @@ function App() {
   };
 
   useEffect(() => {
-    refreshInterfaces();
+    const init = async () => {
+      const ifaces = await refreshInterfaces();
+      const savedIp = localStorage.getItem('selectedInterfaceIp');
+      if (savedIp && ifaces.some(i => i.ip === savedIp)) {
+        setActiveIp(savedIp);
+      }
+    };
+    init();
   }, []);
 
   // Global Sniffing Management
@@ -334,8 +341,10 @@ function App() {
   const handleInterfaceSelect = (ip: string) => {
     if (ip === activeIp) {
         setActiveIp(null);
+        localStorage.removeItem('selectedInterfaceIp');
     } else {
         setActiveIp(ip);
+        localStorage.setItem('selectedInterfaceIp', ip);
     }
   };
 

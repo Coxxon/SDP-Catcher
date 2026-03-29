@@ -125,6 +125,7 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   };
 
   const getDisplayText = () => {
+    if (!sdp) return "---";
     const fallback = gmMac || gmId || "Unknown";
     if (displayMode === 'auto') {
       if (hasName) return resolved?.name;
