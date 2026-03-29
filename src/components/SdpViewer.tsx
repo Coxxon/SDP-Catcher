@@ -247,7 +247,12 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
                   e.preventDefault();
                   e.stopPropagation();
                   const text = getDisplayText();
-                  if (text) navigator.clipboard.writeText(text);
+                  if (text) {
+                    navigator.clipboard.writeText(text);
+                    window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+                      detail: { x: e.clientX, y: e.clientY } 
+                    }));
+                  }
                 }}
                 className={`text-[0.625rem] text-neutral-200 font-mono font-bold tracking-tight px-1 rounded transition-all ${hasIp || hasName ? 'cursor-pointer hover:text-white hover:bg-white/5' : ''}`}
               >

@@ -320,6 +320,9 @@ export function InterfaceList({
                                 e.preventDefault();
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(iface.name);
+                                window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+                                  detail: { x: e.clientX, y: e.clientY } 
+                                }));
                               }}
                               className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}
                             >
@@ -346,6 +349,9 @@ export function InterfaceList({
                             e.preventDefault();
                             e.stopPropagation();
                             navigator.clipboard.writeText(iface.ip);
+                            window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+                              detail: { x: e.clientX, y: e.clientY } 
+                            }));
                           }}
                           className="truncate"
                         >

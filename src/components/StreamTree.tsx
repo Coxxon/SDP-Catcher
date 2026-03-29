@@ -413,6 +413,9 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                         e.preventDefault();
                         e.stopPropagation();
                         navigator.clipboard.writeText(device.name);
+                        window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+                          detail: { x: e.clientX, y: e.clientY } 
+                        }));
                       }}
                       className={`text-[0.6875rem] font-bold truncate w-full tracking-tight pb-0.5 transition-colors ${isVisible ? 'text-white' : 'text-neutral-200'
                         }`}
@@ -424,6 +427,9 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                         e.preventDefault();
                         e.stopPropagation();
                         navigator.clipboard.writeText(device.ip);
+                        window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+                          detail: { x: e.clientX, y: e.clientY } 
+                        }));
                       }}
                       className={`text-xs font-mono mt-0.5 transition-colors ${isVisible ? 'text-zinc-400' : 'text-zinc-500'
                         }`}
@@ -497,6 +503,9 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                                 e.preventDefault();
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(stream.name);
+                                window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+                                  detail: { x: e.clientX, y: e.clientY } 
+                                }));
                               }}
                               className={`truncate flex-1 text-left transition-colors ${(selectedStreamId === stream.id || isStreamVisible) ? 'text-white' : 'text-zinc-300'
                                 }`}
@@ -509,6 +518,9 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                               e.preventDefault();
                               e.stopPropagation();
                               navigator.clipboard.writeText(stream.multicastIp);
+                              window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+                                detail: { x: e.clientX, y: e.clientY } 
+                              }));
                             }}
                             className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${isStreamVisible ? 'text-zinc-400' : 'text-zinc-500'
                               }`}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { Check } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { InterfaceList } from "./components/InterfaceList";
 import { StreamTree } from "./components/StreamTree";
@@ -49,6 +50,26 @@ function App() {
   const [activeIp, setActiveIp] = useState<string | null>(null);
   const activeIpRef = useRef(activeIp);
   const [zoomLevel, setZoomLevel] = useState<number>(1.0);
+  const [copyToast, setCopyToast] = useState<{ x: number, y: number, visible: boolean } | null>(null);
+
+  useEffect(() => {
+    let timeout: any;
+    const handleShowToast = (e: Event) => {
+      const customEvent = e as CustomEvent<{ x: number, y: number }>;
+      setCopyToast({ x: customEvent.detail.x, y: customEvent.detail.y, visible: true });
+      
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        setCopyToast(prev => prev ? { ...prev, visible: false } : null);
+      }, 1000);
+    };
+
+    window.addEventListener('show-copy-toast', handleShowToast);
+    return () => {
+      window.removeEventListener('show-copy-toast', handleShowToast);
+      if (timeout) clearTimeout(timeout);
+    };
+  }, []);
 
   useEffect(() => {
     activeIpRef.current = activeIp;
@@ -439,7 +460,12 @@ function App() {
   const handleRightClickCopy = (e: React.MouseEvent, text: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (text) navigator.clipboard.writeText(text);
+    if (text) {
+      navigator.clipboard.writeText(text);
+      window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+        detail: { x: e.clientX, y: e.clientY } 
+      }));
+    }
   };
 
   return (
@@ -553,6 +579,16 @@ function App() {
             </div>
         </div>
       </footer>
+
+      {copyToast && (
+        <div 
+          className={`fixed z-9999 pointer-events-none flex items-center gap-1.5 px-2.5 py-1 bg-zinc-800 text-white rounded-md shadow-2xl border border-white/10 transition-all duration-300 ${copyToast.visible ? 'opacity-100 -translate-y-4' : 'opacity-0 -translate-y-8'}`}
+          style={{ left: copyToast.x, top: copyToast.y, transform: 'translate(-50%, -100%)' }}
+        >
+          <Check size="12" className="text-green-400" />
+          <span className="text-[10px] font-bold tracking-wider uppercase">Copied</span>
+        </div>
+      )}
     </main>
   );
 }
