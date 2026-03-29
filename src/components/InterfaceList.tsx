@@ -56,6 +56,11 @@ export function InterfaceList({
     onStartSniffing
 }: InterfaceListProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  
+  useEffect(() => {
+    invoke('set_window_constraints', { collapsed: isCollapsed }).catch(console.error);
+  }, [isCollapsed]);
+
   const [isEditMode, setIsEditMode] = useState(false);
   const [hiddenInterfaces, setHiddenInterfaces] = useState<string[]>(() => {
     const saved = localStorage.getItem("hiddenInterfaces");
@@ -137,10 +142,13 @@ export function InterfaceList({
   };
 
   return (
-    <div className={`flex flex-col h-full bg-neutral-900 border-r border-neutral-700 transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${isCollapsed ? 'w-16 min-w-[4rem] max-w-[4rem]' : 'w-[16rem] min-w-[16rem] max-w-[16rem]'}`}>
-      <div className={`bg-neutral-800 border-b border-neutral-700 h-14 flex items-center px-3 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+    <div className={`flex flex-col h-full bg-neutral-900 border-r border-neutral-700 transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${isCollapsed ? 'w-16 min-w-[4rem] max-w-[4rem]' : 'w-[255px] min-w-[255px] max-w-[255px]'}`}>
+      <div className="bg-neutral-800 border-b border-neutral-700 h-14 relative flex items-center overflow-hidden shrink-0 w-full">
+        {/* Clickable Header Button */}
         <div 
-          className="flex items-center gap-2 cursor-pointer hover:bg-neutral-700 p-1.5 -ml-1.5 rounded transition-colors truncate"
+          className={`absolute left-2 h-9 cursor-pointer hover:bg-neutral-700 rounded transition-all duration-300 flex items-center overflow-hidden whitespace-nowrap ${
+            isCollapsed ? 'w-12 pl-[17px]' : 'w-[115px] pl-2'
+          }`}
           onClick={() => setIsCollapsed(!isCollapsed)}
           title={isCollapsed ? "Expand Interfaces" : "Collapse Interfaces"}
         >
@@ -148,28 +156,34 @@ export function InterfaceList({
             size={14} 
             className={`shrink-0 ${isSniffing ? "text-green-500 animate-pulse" : (activeIp ? "text-amber-500" : "text-neutral-400")}`} 
           />
-          {!isCollapsed && <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight truncate">Interfaces</h2>}
+          <h2 className={`text-xs ml-2 font-semibold text-neutral-200 uppercase tracking-tight transition-all duration-300 delay-75 ${
+            isCollapsed ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'
+          }`}>
+            Interfaces
+          </h2>
         </div>
-        {!isCollapsed && (
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={onRefreshInterfaces}
-              className="p-1.5 rounded-md hover:bg-neutral-700 transition-all text-neutral-500 hover:text-white"
-              title="Refresh Network Interfaces"
-            >
-              <RefreshCw size={14} />
-            </button>
-            <button
-              onClick={() => setIsEditMode(!isEditMode)}
-              className={`p-1.5 rounded-md hover:bg-neutral-700 transition-all ${
-                isEditMode ? "text-blue-400 bg-neutral-700" : "text-neutral-500 hover:text-white"
-              }`}
-              title="Interface Configuration"
-            >
-              <Settings size={14} />
-            </button>
-          </div>
-        )}
+
+        {/* Action Buttons */}
+        <div className={`absolute right-3 flex items-center gap-1 shrink-0 transition-all duration-300 ${
+            isCollapsed ? 'opacity-0 pointer-events-none translate-x-4' : 'opacity-100 translate-x-0'
+        }`}>
+          <button
+            onClick={onRefreshInterfaces}
+            className="p-1.5 rounded-md hover:bg-neutral-700 transition-all text-neutral-500 hover:text-white"
+            title="Refresh Network Interfaces"
+          >
+            <RefreshCw size={14} />
+          </button>
+          <button
+            onClick={() => setIsEditMode(!isEditMode)}
+            className={`p-1.5 rounded-md hover:bg-neutral-700 transition-all ${
+              isEditMode ? "text-blue-400 bg-neutral-700" : "text-neutral-500 hover:text-white"
+            }`}
+            title="Interface Configuration"
+          >
+            <Settings size={14} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden">

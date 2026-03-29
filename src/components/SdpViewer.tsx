@@ -142,7 +142,7 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   }, [sdp, sourceIp]);
 
   return (
-    <div className="flex flex-col h-full bg-neutral-900 flex-1 min-w-[31.25rem] overflow-hidden">
+    <div className="flex flex-col h-full bg-neutral-900 flex-1 basis-[500px] min-w-[290px] overflow-hidden">
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between w-full shrink-0 px-3">
         <div className="flex items-center gap-2 min-w-0">
           <FileText size={14} className="text-neutral-400" />

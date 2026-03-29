@@ -515,6 +515,21 @@ fn get_arp_table(state: State<'_, AppState>) -> HashMap<String, DeviceInfo> {
     table
 }
 
+#[tauri::command]
+fn set_window_constraints(window: tauri::Window, collapsed: bool) {
+    let min_width = if collapsed { 609.0 } else { 800.0 };
+    let _ = window.set_min_size(Some(tauri::LogicalSize::new(min_width, 600.0)));
+    
+    if let Ok(current_size) = window.inner_size() {
+        if let Ok(scale_factor) = window.scale_factor() {
+            let logical_size = current_size.to_logical::<f64>(scale_factor);
+            if logical_size.width < min_width {
+                let _ = window.set_size(tauri::LogicalSize::new(min_width, logical_size.height));
+            }
+        }
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -530,7 +545,8 @@ pub fn run() {
             start_sniffing,
             stop_sniffing,
             set_network_ip,
-            set_unknown_timeout
+            set_unknown_timeout,
+            set_window_constraints
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
