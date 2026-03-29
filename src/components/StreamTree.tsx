@@ -66,6 +66,19 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     });
   }, [filteredDevices, sortBy]);
 
+  const stats = useMemo(() => {
+    const counts = { online: 0, offline: 0, standby: 0 };
+    devices.forEach(d => d.streams.forEach(s => {
+      const status = getStreamStatus(s);
+      if (status === 'online') counts.online++;
+      else if (status === 'offline') counts.offline++;
+      else counts.standby++;
+    }));
+    return counts;
+  }, [devices, isSniffing]);
+
+  const globalStatus = stats.offline > 0 ? 'offline' : (stats.standby > 0 ? 'standby' : 'online');
+
   const visibleItems = useMemo(() => {
     const items: { id: string; type: 'device' | 'stream'; device: Device; stream?: Stream }[] = [];
     sortedDevices.forEach(device => {
@@ -321,9 +334,35 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         <div className={`flex items-center gap-2 transition-opacity duration-300 ${isSearchOpen ? 'opacity-0 duration-100' : 'opacity-100 delay-150'}`}>
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
-          <span className="text-neutral-500 font-bold px-1 py-0.5 text-xs">
-            {sortedDevices.reduce((acc, d) => acc + d.streams.length, 0)}
-          </span>
+          
+          <div className="relative group/status flex items-center justify-center">
+            <div className={`absolute inset-0 -z-10 blur-[6px] opacity-40 rounded-full ${getStatusClasses(globalStatus)}`} />
+            <span className="text-white font-bold px-1 py-0.5 text-xs shadow-sm drop-shadow-[0_0_8px_rgba(0,0,0,0.5)]">
+              {sortedDevices.reduce((acc, d) => acc + d.streams.length, 0)}
+            </span>
+            
+            {/* Diagnostic Tooltip */}
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-32 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl py-2 px-3 z-50 opacity-0 group-hover/status:opacity-100 pointer-events-none transition-opacity duration-200">
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                  <span className="text-[10px] text-zinc-400">Online</span>
+                  <span className="text-[10px] font-bold text-white">{stats.online}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="w-2 h-2 rounded-full bg-orange-500" />
+                  <span className="text-[10px] text-zinc-400">Standby</span>
+                  <span className="text-[10px] font-bold text-white">{stats.standby}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  <span className="text-[10px] text-zinc-400">Offline</span>
+                  <span className="text-[10px] font-bold text-white">{stats.offline}</span>
+                </div>
+              </div>
+              <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-zinc-900 border-l border-t border-zinc-700 rotate-45" />
+            </div>
+          </div>
         </div>
         <div className={`flex items-center gap-1 transition-opacity duration-300 ${isSearchOpen ? 'opacity-0 duration-100' : 'opacity-100 delay-150'}`}>
           <button
