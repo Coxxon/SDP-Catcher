@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { InterfaceList } from "./components/InterfaceList";
 import { StreamTree } from "./components/StreamTree";
 import { SdpViewer } from "./components/SdpViewer";
+import { TitleBar } from "./components/TitleBar";
 import { ptpIdToMac } from "./utils/network";
 
 export interface Stream {
@@ -364,6 +365,7 @@ function App() {
     <main 
       className="flex flex-col h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none"
     >
+      <TitleBar />
       {/* Dynamic Workspace Container */}
       <div className="flex flex-1 overflow-x-auto overflow-y-hidden">
         <InterfaceList

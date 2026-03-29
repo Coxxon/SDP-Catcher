@@ -17,8 +17,7 @@
         "height": 600,
         "minWidth": 800,
         "theme": "Dark",
-        "titlebarStyle": "Visible",
-        "windowColor": "#09090b"
+        "decorations": false
       }
     ],
     "security": {
