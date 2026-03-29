@@ -16,6 +16,8 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   const [expandedDevices, setExpandedDevices] = useState<string[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [customTimeouts, setCustomTimeouts] = useState<Record<string, number>>({});
+  const [editingTimeout, setEditingTimeout] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -89,16 +91,19 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     onStreamSelect(stream);
   };
 
-  const isStreamOnline = (stream: Stream) => Date.now() - stream.lastSeen <= stream.sapTimeoutMs;
+  const isStreamOnline = (stream: Stream, deviceIp: string) => {
+    const effectiveTimeout = customTimeouts[deviceIp] ? (customTimeouts[deviceIp] * 1000) : stream.sapTimeoutMs;
+    return Date.now() - stream.lastSeen <= effectiveTimeout;
+  };
 
-  const getStreamStatus = (stream: Stream) => {
+  const getStreamStatus = (stream: Stream, deviceIp: string) => {
     if (!isSniffing) return "standby";
-    return isStreamOnline(stream) ? "online" : "offline";
+    return isStreamOnline(stream, deviceIp) ? "online" : "offline";
   };
 
   const getDeviceStatus = (device: Device) => {
     if (!isSniffing) return "standby";
-    const statuses = device.streams.map(s => isStreamOnline(s));
+    const statuses = device.streams.map(s => isStreamOnline(s, device.ip));
     const allOnline = statuses.every(s => s === true);
     const allOffline = statuses.every(s => s === false);
 
@@ -249,17 +254,61 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                           {device.manufacturer === 'Unknown' && ' (fallback)'}
                         </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[0.5625rem] text-neutral-500 uppercase font-bold tracking-wider whitespace-nowrap">SAP Timeout</span>
-                        <span className="text-[0.625rem] text-neutral-200 font-mono whitespace-nowrap">
-                          {device.sapTimeoutMs / 1000}s
-                          {device.manufacturer === 'Unknown' && ' (user-defined)'}
+                      <div className="flex items-center justify-between group/sap h-4.5">
+                        <span 
+                          onClick={() => {
+                            if (customTimeouts[device.ip]) {
+                              const updated = { ...customTimeouts };
+                              delete updated[device.ip];
+                              setCustomTimeouts(updated);
+                            }
+                          }}
+                          className={`text-[0.5625rem] uppercase font-bold tracking-wider whitespace-nowrap transition-colors ${
+                            customTimeouts[device.ip] 
+                              ? 'text-orange-500 cursor-pointer hover:text-orange-400' 
+                              : 'text-neutral-500 cursor-default'
+                          }`}
+                          title={customTimeouts[device.ip] ? "Override active. Click to reset to default" : ""}
+                        >
+                          SAP Timeout {customTimeouts[device.ip] ? "" : "(default)"}
                         </span>
+                        
+                        {editingTimeout === device.ip ? (
+                          <input
+                            autoFocus
+                            type="number"
+                            min="60"
+                            max="300"
+                            defaultValue={customTimeouts[device.ip] || (device.sapTimeoutMs / 1000)}
+                            className="bg-black/50 border border-neutral-700 text-[0.625rem] font-mono text-right text-white placeholder-zinc-500 outline-none w-10 appearance-none rounded px-1 -mr-1"
+                            onBlur={(e) => {
+                              const val = Math.min(300, Math.max(60, parseInt(e.target.value) || 60));
+                              setCustomTimeouts(prev => ({ ...prev, [device.ip]: val }));
+                              setEditingTimeout(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                (e.target as HTMLInputElement).blur(); // Triggers onBlur logic
+                              } else if (e.key === 'Escape') {
+                                setEditingTimeout(null);
+                              }
+                            }}
+                          />
+                        ) : (
+                          <span 
+                            onClick={() => setEditingTimeout(device.ip)}
+                            className="text-[0.625rem] text-neutral-200 font-mono whitespace-nowrap cursor-pointer hover:text-white hover:bg-white/10 px-1 rounded transition-colors -mr-1"
+                            title="Click to override timeout for this device"
+                          >
+                            {customTimeouts[device.ip] || (device.sapTimeoutMs / 1000)}s
+                            {!customTimeouts[device.ip] && device.manufacturer === 'Unknown' && ' (user-defined)'}
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     {[...device.streams].sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
-                      const streamStatus = getStreamStatus(stream);
+                      const streamStatus = getStreamStatus(stream, device.ip);
                       const streamStatusClass = getStatusClasses(streamStatus);
 
                       return (

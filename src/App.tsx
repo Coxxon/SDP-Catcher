@@ -464,7 +464,7 @@ function App() {
 
             {/* SAP Timeout Control */}
             <div className="flex items-center gap-2">
-                <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">SAP TIMEOUT</span>
+                <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">DEFAULT SAP TIMEOUT</span>
                 <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[2.25rem]">
                     <input 
                         type="text" 

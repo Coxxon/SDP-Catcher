@@ -9,49 +9,49 @@ const server = dgram.createSocket({ type: 'udp4', reuseAddr: true });
 
 // Liste des constructeurs et leurs intervalles d'annonce SAP
 const manufacturers = [
-  { name: "Riedel", interval: 5000 },
+  { name: "Riedel", interval: 10000 },
   { name: "Audinate_Dante", interval: 30000 },
-  { name: "Yamaha", interval: 15000 }, // Gardé à 15s pour tests réactifs
-  { name: "Lawo", interval: 35000 },
+  { name: "Yamaha", interval: 30000 },
+  { name: "Lawo", interval: 30000 },
   { name: "Merging", interval: 30000 },
   { name: "DirectOut", interval: 30000 },
-  { name: "Digico", interval: 35000 },
-  { name: "SSL", interval: 35000 },
-  { name: "Allen_Heath", interval: 35000 },
-  { name: "QSC", interval: 35000 },
-  { name: "Avid", interval: 35000 },
-  { name: "Axia_Telos", interval: 35000 },
-  { name: "Wheatstone", interval: 35000 },
-  { name: "Ross_Video", interval: 40000 },
-  { name: "Evertz", interval: 40000 },
-  { name: "Grass_Valley", interval: 40000 },
-  { name: "TSL", interval: 40000 },
-  { name: "Calrec", interval: 40000 },
-  { name: "ClearCom", interval: 40000 },
-  { name: "RTS_Bosch", interval: 40000 },
-  { name: "Shure", interval: 35000 },
-  { name: "Sennheiser", interval: 35000 },
-  { name: "Audio_Technica", interval: 35000 },
-  { name: "BirdDog", interval: 40000 },
-  { name: "Blackmagic", interval: 40000 },
-  { name: "Focusrite", interval: 35000 },
-  { name: "Genelec", interval: 35000 },
-  { name: "Studer", interval: 35000 },
-  { name: "Sonifex", interval: 35000 },
-  { name: "Neumann", interval: 35000 },
-  { name: "Apogee", interval: 35000 },
-  { name: "Behringer_Midas", interval: 35000 },
-  { name: "Sound_Devices", interval: 35000 },
-  { name: "Luminex", interval: 40000 },
-  { name: "Netgear_AV", interval: 40000 },
-  { name: "d_b_audiotechnik", interval: 40000 },
-  { name: "L_Acoustics", interval: 40000 },
-  { name: "Meyer_Sound", interval: 40000 },
-  { name: "Klark_Teknik", interval: 35000 },
-  { name: "Kramer", interval: 35000 },
-  { name: "ATEN", interval: 35000 },
-  { name: "EmberPlus_Gateway", interval: 35000 },
-  { name: "Unknown_Device", interval: 60000 } // Le test du Fallback
+  { name: "Digico", interval: 30000 },
+  { name: "SSL", interval: 30000 },
+  { name: "Allen_Heath", interval: 30000 },
+  { name: "QSC", interval: 30000 },
+  { name: "Avid", interval: 30000 },
+  { name: "Axia_Telos", interval: 30000 },
+  { name: "Wheatstone", interval: 30000 },
+  { name: "Ross_Video", interval: 35000 },
+  { name: "Evertz", interval: 35000 },
+  { name: "Grass_Valley", interval: 35000 },
+  { name: "TSL", interval: 35000 },
+  { name: "Calrec", interval: 35000 },
+  { name: "ClearCom", interval: 35000 },
+  { name: "RTS_Bosch", interval: 35000 },
+  { name: "Shure", interval: 30000 },
+  { name: "Sennheiser", interval: 30000 },
+  { name: "Audio_Technica", interval: 30000 },
+  { name: "BirdDog", interval: 35000 },
+  { name: "Blackmagic", interval: 35000 },
+  { name: "Focusrite", interval: 30000 },
+  { name: "Genelec", interval: 30000 },
+  { name: "Studer", interval: 30000 },
+  { name: "Sonifex", interval: 30000 },
+  { name: "Neumann", interval: 30000 },
+  { name: "Apogee", interval: 30000 },
+  { name: "Behringer_Midas", interval: 30000 },
+  { name: "Sound_Devices", interval: 30000 },
+  { name: "Luminex", interval: 35000 },
+  { name: "Netgear_AV", interval: 35000 },
+  { name: "d_b_audiotechnik", interval: 35000 },
+  { name: "L_Acoustics", interval: 35000 },
+  { name: "Meyer_Sound", interval: 35000 },
+  { name: "Klark_Teknik", interval: 30000 },
+  { name: "Kramer", interval: 30000 },
+  { name: "ATEN", interval: 30000 },
+  { name: "EmberPlus_Gateway", interval: 30000 },
+  { name: "Unknown_Device", interval: 60000 }
 ];
 
 // Topologie PTP Spécifique
@@ -164,7 +164,7 @@ server.on('listening', () => {
     server.send(buf127, 0, buf127.length, PTP_PORT, PTP_ADDR, (err) => {
       if (err) console.error('Error sending PTP Announce (Dom 127):', err);
     });
-    
+
   }, 1000); // 1s
 
 });
