@@ -213,7 +213,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
             className="w-[26px] h-[26px] flex items-center justify-center rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans relative group shrink-0"
           >
             <ArrowUpDown size="0.875rem" />
-            <span className="absolute bottom-1 right-1 text-[7px] font-bold text-neutral-500 group-hover:text-white transition-colors uppercase leading-none bg-neutral-800 group-hover:bg-neutral-700 px-[1px] py-[0.5px] rounded-[1px] shadow-[0_0_0_1px_var(--color-neutral-800)] group-hover:shadow-[0_0_0_1px_var(--color-neutral-700)]">
+            <span className="absolute bottom-1 right-1 text-[7px] font-bold text-neutral-500 group-hover:text-white transition-colors uppercase leading-none bg-neutral-800 group-hover:bg-neutral-700 py-[0.5px] rounded-[1px] shadow-[0_1px_0_0_var(--color-neutral-800),0_-1px_0_0_var(--color-neutral-800)] group-hover:shadow-[0_1px_0_0_var(--color-neutral-700),0_-1px_0_0_var(--color-neutral-700)]">
               {sortBy === 'name' ? 'AZ' : 'IP'}
             </span>
           </button>
