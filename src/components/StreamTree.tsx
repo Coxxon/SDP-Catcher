@@ -17,12 +17,29 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) {
       searchInputRef.current.focus();
     }
   }, [isSearchOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        isSearchOpen && 
+        searchContainerRef.current && 
+        !searchContainerRef.current.contains(event.target as Node) &&
+        !searchQuery
+      ) {
+        setIsSearchOpen(false);
+      }
+    };
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isSearchOpen, searchQuery]);
 
   const filteredDevices = devices.reduce((acc: Device[], device) => {
     const q = searchQuery.toLowerCase();
@@ -112,6 +129,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         
         {/* Animated Search Bar Overlay */}
         <div 
+          ref={searchContainerRef}
           className={`absolute inset-0 z-10 flex items-center px-3 bg-zinc-950 transition-all duration-300 ease-in-out origin-right ${
             isSearchOpen ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0 pointer-events-none'
           }`}

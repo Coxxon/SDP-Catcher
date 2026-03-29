@@ -55,6 +55,24 @@ function App() {
   useEffect(() => {
     document.documentElement.style.fontSize = `${zoomLevel * 100}%`;
   }, [zoomLevel]);
+
+  // Global Zoom Shortcuts
+  useEffect(() => {
+    const handleZoomKeys = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === '+' || e.key === '=' || e.code === 'NumpadAdd') {
+          e.preventDefault();
+          setZoomLevel(prev => Math.min(parseFloat((prev + 0.1).toFixed(1)), 1.3));
+        } else if (e.key === '-' || e.key === '6' || e.code === 'NumpadSubtract') {
+          e.preventDefault();
+          setZoomLevel(prev => Math.max(parseFloat((prev - 0.1).toFixed(1)), 1.0));
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleZoomKeys, { passive: false });
+    return () => window.removeEventListener('keydown', handleZoomKeys);
+  }, []);
   const [isSniffing, setIsSniffing] = useState(false);
   const [interfaces, setInterfaces] = useState<InterfaceInfo[]>([]);
   const [devices, setDevices] = useState<Device[]>([]);
