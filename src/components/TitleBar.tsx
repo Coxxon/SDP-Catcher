@@ -25,31 +25,42 @@ export function TitleBar() {
 
   return (
     <div 
-      data-tauri-drag-region 
-      className="h-8 bg-[#09090b] border-b border-zinc-800 flex items-center justify-between px-3 select-none shrink-0 z-[100]"
+      className="h-8 bg-[#09090b] border-b border-zinc-800 flex items-center justify-between px-3 select-none shrink-0 z-[100] relative"
     >
-      <div className="flex items-center gap-2 pointer-events-none">
+      {/* Draggable Area - Background layer */}
+      <div data-tauri-drag-region className="absolute inset-0 z-0" onDoubleClick={() => appWindow.toggleMaximize()} />
+
+      <div className="flex items-center gap-2 pointer-events-none relative z-10">
         <Activity size={14} className="text-zinc-600" />
         <span className="text-[0.625rem] font-bold text-zinc-500 tracking-widest uppercase">SDP Catcher</span>
       </div>
 
-      <div className="flex items-center h-full">
+      <div className="flex items-center h-full relative z-10">
         <button
-          onClick={() => appWindow.minimize()}
+          onClick={() => {
+            console.log("Minimize clicked");
+            appWindow.minimize();
+          }}
           className="h-full px-3 flex items-center justify-center hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
           title="Minimize"
         >
           <Minus size={14} />
         </button>
         <button
-          onClick={() => appWindow.toggleMaximize()}
+          onClick={() => {
+            console.log("Toggle Maximize clicked");
+            appWindow.toggleMaximize();
+          }}
           className="h-full px-3 flex items-center justify-center hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
           title={isMaximized ? "Restore" : "Maximize"}
         >
           <Square size={12} />
         </button>
         <button
-          onClick={() => appWindow.close()}
+          onClick={() => {
+            console.log("Close clicked");
+            appWindow.close();
+          }}
           className="h-full px-3 flex items-center justify-center hover:bg-red-600/80 transition-colors text-zinc-400 hover:text-white"
           title="Close"
         >
