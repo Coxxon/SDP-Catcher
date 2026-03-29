@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp, Search, X, ArrowUpDown } from "lucide-react";
+import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp, Search, X, ArrowDownAZ, ArrowDown } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Stream, Device } from "../App";
 
@@ -212,10 +212,17 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
             title={sortBy === 'name' ? 'Sort by IP address' : 'Sort alphabetically'}
             className="w-[26px] h-[26px] flex items-center justify-center rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans relative group shrink-0"
           >
-            <ArrowUpDown size="0.875rem" />
-            <span className="absolute bottom-1 right-1 text-[7px] font-bold text-neutral-500 group-hover:text-white transition-colors uppercase leading-none bg-neutral-800 group-hover:bg-neutral-700 py-[0.5px] rounded-[1px] shadow-[0_1px_0_0_var(--color-neutral-800),0_-1px_0_0_var(--color-neutral-800)] group-hover:shadow-[0_1px_0_0_var(--color-neutral-700),0_-1px_0_0_var(--color-neutral-700)]">
-              {sortBy === 'name' ? 'AZ' : 'IP'}
-            </span>
+            {sortBy === 'name' ? (
+              <ArrowDownAZ size="0.875rem" />
+            ) : (
+              <div className="relative flex items-center">
+                <ArrowDown size="0.875rem" />
+                <div className="flex flex-col items-center justify-between h-[12px] -ml-[2px] mt-[1px] leading-none">
+                  <span className="text-[7px] font-bold">I</span>
+                  <span className="text-[7px] font-bold">P</span>
+                </div>
+              </div>
+            )}
           </button>
           <button
             onClick={toggleAll}
