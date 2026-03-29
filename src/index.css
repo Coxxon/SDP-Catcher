@@ -41,8 +41,20 @@ input[type="number"] {
     }
   }
 
+  @keyframes ghost-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.15;
+      transform: scale(0.85);
+    }
+  }
+
   --animate-blink: blink 1s ease-in-out infinite;
   --animate-pulse: pulse 1.5s ease-in-out infinite;
+  --animate-ghost-pulse: ghost-pulse 2s ease-in-out infinite;
 }
 
 body {

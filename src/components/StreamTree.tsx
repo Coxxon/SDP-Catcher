@@ -123,7 +123,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
 
   const getStatusClasses = (status: string, isGhost?: boolean) => {
     const base = "rounded-full aspect-square block";
-    if (isGhost) return `${base} bg-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.4)] animate-pulse`;
+    if (isGhost) return `${base} bg-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.4)] animate-ghost-pulse`;
 
     switch (status) {
       case "online":
