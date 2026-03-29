@@ -432,7 +432,7 @@ function App() {
             <span className="text-neutral-500 uppercase tracking-widest">PTPV2 GMC:</span>
             <span 
               onClick={isPtpActive ? cycleFooterDisplayMode : undefined}
-              className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer underline decoration-dotted decoration-neutral-600' : 'text-neutral-600 italic cursor-not-allowed'}`}
+              className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer' : 'text-neutral-600 italic cursor-not-allowed'}`}
             >
               {isPtpActive ? getFooterGmcText() : (activeIp ? "No PTP data for this PTP Domain" : "Select Interface")}
             </span>

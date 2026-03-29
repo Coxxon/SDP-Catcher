@@ -177,14 +177,14 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         </div>
 
         {/* Normal Header Content */}
-        <div className={`flex items-center gap-2 transition-opacity duration-200 ${isSearchOpen ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`flex items-center gap-2 transition-opacity duration-300 ${isSearchOpen ? 'opacity-0 duration-100' : 'opacity-100 delay-150'}`}>
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
           <span className="text-neutral-500 font-bold px-1 py-0.5 text-xs">
             {filteredDevices.reduce((acc, d) => acc + d.streams.length, 0)}
           </span>
         </div>
-        <div className={`flex items-center gap-1 transition-opacity duration-200 ${isSearchOpen ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`flex items-center gap-1 transition-opacity duration-300 ${isSearchOpen ? 'opacity-0 duration-100' : 'opacity-100 delay-150'}`}>
           <button
             onClick={() => setIsSearchOpen(true)}
             title="Search"

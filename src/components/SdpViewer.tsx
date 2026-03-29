@@ -125,7 +125,7 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   };
 
   const getDisplayText = () => {
-    if (!sdp) return "---";
+    if (!sdp) return "";
     const fallback = gmMac || gmId || "Unknown";
     if (displayMode === 'auto') {
       if (hasName) return resolved?.name;
@@ -243,7 +243,7 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
               <span className="text-[0.625rem] text-neutral-500 font-bold uppercase tracking-tight">Master Clock</span>
               <span 
                 onClick={cycleDisplayMode}
-                className={`text-[0.625rem] text-neutral-200 font-mono font-bold tracking-tight px-1 rounded transition-all underline decoration-dotted decoration-neutral-600 ${hasIp || hasName ? 'cursor-pointer hover:text-white hover:bg-white/5' : ''}`}
+                className={`text-[0.625rem] text-neutral-200 font-mono font-bold tracking-tight px-1 rounded transition-all ${hasIp || hasName ? 'cursor-pointer hover:text-white hover:bg-white/5' : ''}`}
               >
                 {getDisplayText()}
               </span>
