@@ -155,7 +155,7 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
             disabled={!sdp}
             className="group relative w-[4.6875rem] h-6 text-[0.625rem] font-bold uppercase tracking-wider
                      bg-neutral-900 border border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-white transition-all
-                     disabled:opacity-20 disabled:cursor-not-allowed overflow-hidden rounded-sm shadow-sm active:scale-95"
+                     disabled:opacity-20 disabled:cursor-not-allowed overflow-hidden shadow-sm active:scale-95"
           >
             {/* Default State: Text + Icon (Slides Up and Out) */}
             <div className={`absolute inset-0 flex items-center justify-center gap-1.5 transition-all duration-200 ease-out ${
