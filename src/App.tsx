@@ -60,7 +60,7 @@ function App() {
       
       if (timeout) clearTimeout(timeout);
       timeout = setTimeout(() => {
-        setCopyToast(prev => prev ? { ...prev, visible: false } : null);
+        setCopyToast(null);
       }, 1000);
     };
 
@@ -580,18 +580,26 @@ function App() {
         </div>
       </footer>
 
+      <style>{`
+        @keyframes damageFloat {
+          0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
+          15% { opacity: 1; transform: translate(-50%, -24px) scale(1.1); }
+          30% { transform: translate(-50%, -32px) scale(1); }
+          80% { opacity: 1; transform: translate(-50%, -48px) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, -64px) scale(0.9); }
+        }
+        .animate-damage {
+          animation: damageFloat 1s ease-out forwards;
+        }
+      `}</style>
+      
       {copyToast && (
         <div 
+          key={`${copyToast.x}-${copyToast.y}-${Date.now()}`}
           className="fixed z-9999 pointer-events-none"
           style={{ left: copyToast.x, top: copyToast.y }}
         >
-          <div 
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-800 text-white rounded-md shadow-xl border border-white/10 transition-[opacity,transform] ease-out origin-bottom ${
-              copyToast.visible 
-                ? 'opacity-100 duration-200 translate-x-[-50%] translate-y-[calc(-100%-12px)] scale-100' 
-                : 'opacity-0 duration-150 translate-x-[-50%] -translate-y-full scale-75'
-            }`}
-          >
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-800 text-white rounded-md shadow-xl border border-white/10 animate-damage">
             <Check size="12" className="text-green-400" />
             <span className="text-[10px] font-bold tracking-wide uppercase">Copied</span>
           </div>
