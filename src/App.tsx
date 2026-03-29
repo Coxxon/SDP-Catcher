@@ -217,6 +217,7 @@ function App() {
 
     const unlistenPtp = listen<{ptp_id: string, name: string, ip: string, interface_ip: string, domain: number}>("ptp-clock-update", (event) => {
       const { ptp_id, interface_ip, domain } = event.payload;
+      console.log("PTP Packet Received - Domain:", domain, "Target:", selectedDomainRef.current);
       
       // Flexible IP Isolation (remove mask if present)
       const selectedIp = activeIpRef.current?.split("/")[0] || "";
@@ -392,7 +393,7 @@ function App() {
               className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer underline decoration-dotted decoration-neutral-600' : 'text-neutral-600 italic cursor-not-allowed'}`}
               title={isPtpActive ? `Mode: ${footerDisplayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)` : "PTP Clock Offline"}
             >
-              {isPtpActive ? getFooterGmcText() : `No PTP data on ${activeIp?.split('/')[0] || 'Unknown'}`}
+              {isPtpActive ? getFooterGmcText() : (activeIp ? `No PTP data on ${activeIp.split('/')[0]}` : "Select Interface")}
             </span>
           </div>
         </div>
@@ -408,7 +409,7 @@ function App() {
                         max="127"
                         value={selectedDomain}
                         onChange={(e) => setSelectedDomain(parseInt(e.target.value) || 0)}
-                        className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none"
+                        className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none translate-y-[0.0625rem]"
                         title="PTP Domain Number Filter"
                     />
                 </div>
@@ -424,7 +425,7 @@ function App() {
                         max="300"
                         value={unknownTimeout}
                         onChange={(e) => handleTimeoutChange(e.target.value)}
-                        className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none"
+                        className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none translate-y-[0.0625rem]"
                     />
                     <span className="text-[0.5625rem] text-zinc-600 font-bold ml-0.5">s</span>
                 </div>

@@ -106,10 +106,10 @@ const generatePayload = (deviceName, deviceIp, streamName, multicastIp, specific
   );
 };
 
-const createPtpAnnounceBuffer = (ptpId) => {
+const createPtpAnnounceBuffer = (ptpId, domain = 0) => {
   const buf = Buffer.alloc(64);
   buf[0] = 0x0B; // Announce messageType
-  buf[4] = 0;    // domainNumber
+  buf[4] = domain; // domainNumber
   // ClockIdentity offset 20
   const hex = ptpId.replace(/-/g, '');
   for (let i = 0; i < 8; i++) {
@@ -149,22 +149,20 @@ server.on('listening', () => {
     }, device.interval);
   });
 
-  let ptpToggle = true;
-
-  setInterval(() => {
-    ptpToggle = !ptpToggle;
-    console.log(`[${new Date().toLocaleTimeString()}] 🔄 GMC IDENTITY SWITCHED TO ${ptpToggle ? "RIEDEL" : "LUMINEX"}`);
-  }, 10000); // Toggle every 10s
-
   const PTP_PORT = 320;
   const PTP_ADDR = '224.0.1.129';
 
   setInterval(() => {
-    const ptpId = ptpToggle ? G_RIEDEL_ID : G_LUMINEX_ID;
-    const buf = createPtpAnnounceBuffer(ptpId);
-    
-    server.send(buf, 0, buf.length, PTP_PORT, PTP_ADDR, (err) => {
-      if (err) console.error('Error sending PTP Announce:', err);
+    // Domain 0 - Riedel
+    const buf0 = createPtpAnnounceBuffer(G_RIEDEL_ID, 0);
+    server.send(buf0, 0, buf0.length, PTP_PORT, PTP_ADDR, (err) => {
+      if (err) console.error('Error sending PTP Announce (Dom 0):', err);
+    });
+
+    // Domain 127 - Luminex
+    const buf127 = createPtpAnnounceBuffer(G_LUMINEX_ID, 127);
+    server.send(buf127, 0, buf127.length, PTP_PORT, PTP_ADDR, (err) => {
+      if (err) console.error('Error sending PTP Announce (Dom 127):', err);
     });
     
   }, 1000); // 1s
