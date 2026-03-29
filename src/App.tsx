@@ -394,39 +394,29 @@ function App() {
             >
               {isPtpActive ? getFooterGmcText() : `No PTP data on ${activeIp?.split('/')[0] || 'Unknown'}`}
             </span>
-            <div className="flex items-center gap-1 ml-2 text-[0.5625rem] font-bold tracking-wider text-neutral-500">
-              DOM:
-              <input
-                type="number"
-                min="0"
-                max="127"
-                value={selectedDomain}
-                onChange={(e) => setSelectedDomain(parseInt(e.target.value) || 0)}
-                className="w-6 bg-transparent text-neutral-300 font-mono text-center appearance-none outline-none focus:text-white transition-colors"
-                title="PTP Domain Number Filter"
-              />
-            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 ml-auto">
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded px-1 h-4.5">
-              <button 
-                 onClick={() => setZoomLevel(prev => Math.max(1.0, prev - 0.1))}
-                 className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0"
-                 title="Zoom Out"
-              >-</button>
-              <span className="text-[0.5625rem] text-zinc-400 font-mono w-6 text-center select-none">{Math.round(zoomLevel * 100)}%</span>
-              <button 
-                 onClick={() => setZoomLevel(prev => Math.min(1.3, prev + 0.1))}
-                 className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0 pb-0.5"
-                 title="Zoom In"
-              >+</button>
+        <div className="flex items-center gap-4 ml-auto">
+            {/* PTP Domain Control */}
+            <div className="flex items-center gap-2">
+                <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">PTP DOMAIN</span>
+                <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[2.25rem]">
+                    <input 
+                        type="number" 
+                        min="0"
+                        max="127"
+                        value={selectedDomain}
+                        onChange={(e) => setSelectedDomain(parseInt(e.target.value) || 0)}
+                        className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none"
+                        title="PTP Domain Number Filter"
+                    />
+                </div>
             </div>
 
+            {/* SAP Timeout Control */}
             <div className="flex items-center gap-2">
-                <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">Default SAP Timeout</span>
+                <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">DEFAULT SAP TIMEOUT</span>
                 <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[2.25rem]">
                     <input 
                         type="number" 
@@ -438,6 +428,20 @@ function App() {
                     />
                     <span className="text-[0.5625rem] text-zinc-600 font-bold ml-0.5">s</span>
                 </div>
+            </div>
+
+            {/* Zoom Controls (Minimalist) */}
+            <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded px-1 h-4.5">
+              <button 
+                 onClick={() => setZoomLevel(prev => Math.max(1.0, prev - 0.1))}
+                 className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0"
+                 title="Zoom Out"
+              >-</button>
+              <button 
+                 onClick={() => setZoomLevel(prev => Math.min(1.3, prev + 0.1))}
+                 className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0 pb-0.5"
+                 title="Zoom In"
+              >+</button>
             </div>
         </div>
       </footer>
