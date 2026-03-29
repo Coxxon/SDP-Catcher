@@ -203,31 +203,31 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           <button
             onClick={() => setIsSearchOpen(true)}
             title="Search"
-            className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans shrink-0"
+            className="w-[26px] h-[26px] flex items-center justify-center rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans shrink-0"
           >
             <Search size="0.875rem" />
           </button>
           <button
             onClick={() => setSortBy(prev => prev === 'name' ? 'ip' : 'name')}
             title={sortBy === 'name' ? 'Sort by IP address' : 'Sort alphabetically'}
-            className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans relative group shrink-0"
+            className="w-[26px] h-[26px] flex items-center justify-center rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans relative group shrink-0"
           >
             <ArrowUpDown size="0.875rem" />
-            <span className="absolute bottom-[3px] right-[4px] text-[7px] font-bold text-neutral-500 group-hover:text-white transition-colors uppercase leading-none">
+            <span className="absolute bottom-1 right-1 text-[7px] font-bold text-neutral-500 group-hover:text-white transition-colors uppercase leading-none bg-neutral-800 group-hover:bg-neutral-700 px-[1px] py-[0.5px] rounded-[1px] shadow-[0_0_0_1px_var(--color-neutral-800)] group-hover:shadow-[0_0_0_1px_var(--color-neutral-700)]">
               {sortBy === 'name' ? 'AZ' : 'IP'}
             </span>
           </button>
           <button
             onClick={toggleAll}
             title={isAllExpanded ? "Collapse all" : "Expand all"}
-            className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans shrink-0"
+            className="w-[26px] h-[26px] flex items-center justify-center rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans shrink-0"
           >
             {isAllExpanded ? <ChevronsDownUp size="0.875rem" /> : <ChevronsUpDown size="0.875rem" />}
           </button>
           <button
             onClick={onClearOffline}
             title="Clear offline devices/streams"
-            className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-all font-sans shrink-0"
+            className="w-[26px] h-[26px] flex items-center justify-center rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-all font-sans shrink-0"
           >
             <Trash2 size="0.875rem" />
           </button>
