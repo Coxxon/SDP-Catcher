@@ -153,12 +153,20 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
           <button
             onClick={handleCopy}
             disabled={!sdp}
-            className="flex items-center gap-2 px-3 py-1 text-[0.625rem] font-bold uppercase tracking-wider
+            className="group relative flex items-center justify-center w-[4.6875rem] h-6 text-[0.625rem] font-bold uppercase tracking-wider
                      bg-neutral-900 border border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-white transition-all
-                     disabled:opacity-20 disabled:cursor-not-allowed"
+                     disabled:opacity-20 disabled:cursor-not-allowed overflow-hidden"
           >
-            {copied ? <Check size="0.75rem" className="text-green-500" /> : <Copy size="0.75rem" />}
-            {copied ? "COPIED" : "COPY"}
+            {/* Default State: Text + Icon */}
+            <div className={`flex items-center gap-1.5 transition-all duration-300 ${copied ? 'opacity-0 scale-75' : 'opacity-100 scale-100'}`}>
+              <Copy size="0.75rem" />
+              <span>COPY</span>
+            </div>
+            
+            {/* Success State: Centered Checkmark */}
+            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${copied ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}>
+              <Check size="0.875rem" className="text-green-500" />
+            </div>
           </button>
           <button
             onClick={handleSave}
