@@ -66,19 +66,6 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     });
   }, [filteredDevices, sortBy]);
 
-  const stats = useMemo(() => {
-    const counts = { online: 0, offline: 0, standby: 0 };
-    devices.forEach(d => d.streams.forEach(s => {
-      const status = getStreamStatus(s);
-      if (status === 'online') counts.online++;
-      else if (status === 'offline') counts.offline++;
-      else counts.standby++;
-    }));
-    return counts;
-  }, [devices, isSniffing]);
-
-  const globalStatus = stats.offline > 0 ? 'offline' : (stats.standby > 0 ? 'standby' : 'online');
-
   const visibleItems = useMemo(() => {
     const items: { id: string; type: 'device' | 'stream'; device: Device; stream?: Stream }[] = [];
     sortedDevices.forEach(device => {
@@ -291,6 +278,19 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         return `${base} bg-neutral-600 opacity-50`;
     }
   };
+
+  const stats = useMemo(() => {
+    const counts = { online: 0, offline: 0, standby: 0 };
+    devices.forEach(d => d.streams.forEach(s => {
+      const status = getStreamStatus(s);
+      if (status === 'online') counts.online++;
+      else if (status === 'offline') counts.offline++;
+      else counts.standby++;
+    }));
+    return counts;
+  }, [devices, isSniffing]);
+
+  const globalStatus = stats.offline > 0 ? 'offline' : (stats.standby > 0 ? 'standby' : 'online');
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-[15.9375rem] min-w-[15.9375rem] max-w-[15.9375rem] shrink-0">
