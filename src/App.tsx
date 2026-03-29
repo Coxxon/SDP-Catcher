@@ -429,6 +429,19 @@ function App() {
     : devices;
 
 
+  // Disable Context Menu Globally
+  useEffect(() => {
+    const disableContextMenu = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener('contextmenu', disableContextMenu);
+    return () => document.removeEventListener('contextmenu', disableContextMenu);
+  }, []);
+
+  const handleRightClickCopy = (e: React.MouseEvent, text: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (text) navigator.clipboard.writeText(text);
+  };
+
   return (
     <main 
       className="flex flex-col h-screen w-screen bg-neutral-900 text-neutral-300 font-sans antialiased overflow-hidden select-none"
@@ -473,6 +486,7 @@ function App() {
             <span className="text-neutral-500 uppercase tracking-widest">PTPV2 GMC:</span>
             <span 
               onClick={isPtpActive ? cycleFooterDisplayMode : undefined}
+              onContextMenu={(e) => handleRightClickCopy(e, getFooterGmcText())}
               className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer' : 'text-neutral-600 italic cursor-not-allowed'}`}
             >
               {isPtpActive ? getFooterGmcText() : (activeIp ? "No PTP data for this PTP Domain" : "Select Interface")}

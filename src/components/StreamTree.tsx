@@ -377,14 +377,28 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   </div>
 
                   <div className="relative z-10 flex flex-col items-start leading-none min-w-0 text-left">
-                    <span className={`text-[0.6875rem] font-bold truncate w-full tracking-tight pb-0.5 transition-colors ${
-                      isFocused ? 'text-white' : 'text-neutral-200'
-                    }`}>
+                    <span 
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(device.name);
+                      }}
+                      className={`text-[0.6875rem] font-bold truncate w-full tracking-tight pb-0.5 transition-colors ${
+                        isFocused ? 'text-white' : 'text-neutral-200'
+                      }`}
+                    >
                       {device.name}
                     </span>
-                    <span className={`text-xs font-mono mt-0.5 transition-colors ${
-                      isFocused ? 'text-zinc-400' : 'text-zinc-500'
-                    }`}>
+                    <span 
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(device.ip);
+                      }}
+                      className={`text-xs font-mono mt-0.5 transition-colors ${
+                        isFocused ? 'text-zinc-400' : 'text-zinc-500'
+                      }`}
+                    >
                       {device.ip}
                     </span>
                   </div>
@@ -447,15 +461,29 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                           )}
                           <div className="flex items-center gap-2 w-full relative z-10">
                             <div className={`w-1.5 h-1.5 ${streamStatusClass}`} />
-                            <span className={`truncate flex-1 text-left transition-colors ${
-                              (selectedStreamId === stream.id || isStreamFocused) ? 'text-white' : 'text-zinc-300'
-                            }`}>
+                            <span 
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(stream.name);
+                              }}
+                              className={`truncate flex-1 text-left transition-colors ${
+                                (selectedStreamId === stream.id || isStreamFocused) ? 'text-white' : 'text-zinc-300'
+                              }`}
+                            >
                               {stream.name}
                             </span>
                           </div>
-                          <span className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${
-                            isStreamFocused ? 'text-zinc-400' : 'text-zinc-500'
-                          }`}>
+                          <span 
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(stream.multicastIp);
+                            }}
+                            className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${
+                              isStreamFocused ? 'text-zinc-400' : 'text-zinc-500'
+                            }`}
+                          >
                             {stream.multicastIp}
                           </span>
                         </button>

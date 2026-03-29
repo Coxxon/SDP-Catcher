@@ -243,6 +243,12 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
               <span className="text-[0.625rem] text-neutral-500 font-bold uppercase tracking-tight">Master Clock</span>
               <span 
                 onClick={cycleDisplayMode}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const text = getDisplayText();
+                  if (text) navigator.clipboard.writeText(text);
+                }}
                 className={`text-[0.625rem] text-neutral-200 font-mono font-bold tracking-tight px-1 rounded transition-all ${hasIp || hasName ? 'cursor-pointer hover:text-white hover:bg-white/5' : ''}`}
               >
                 {getDisplayText()}

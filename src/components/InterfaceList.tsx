@@ -315,7 +315,14 @@ export function InterfaceList({
                     <>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <span className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
+                            <span 
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                navigator.clipboard.writeText(iface.name);
+                              }}
+                              className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}
+                            >
                               {iface.name}
                             </span>
                         </div>
@@ -334,7 +341,16 @@ export function InterfaceList({
                         </div>
                       </div>
                       <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
-                        <span className="truncate">{iface.ip} <span>/{cidr}</span></span>
+                        <span 
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(iface.ip);
+                          }}
+                          className="truncate"
+                        >
+                          {iface.ip} <span>/{cidr}</span>
+                        </span>
                         {streamCount > 0 && (
                             <span className="pr-1 shrink-0">
                                 {streamCount} {streamCount === 1 ? 'stream' : 'streams'}
