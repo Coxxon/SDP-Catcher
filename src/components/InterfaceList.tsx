@@ -12,6 +12,7 @@ interface InterfaceListProps {
   setIsSniffing: (value: boolean) => void;
   onRefreshInterfaces: () => Promise<InterfaceInfo[]>;
   onStartSniffing: (ifaces: InterfaceInfo[]) => Promise<void>;
+  zoomLevel: number;
 }
 
 const maskToCidr = (mask: string): number => {
@@ -53,13 +54,14 @@ export function InterfaceList({
     onInterfaceSelect, 
     setIsSniffing,
     onRefreshInterfaces,
-    onStartSniffing
+    onStartSniffing,
+    zoomLevel
 }: InterfaceListProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
   
   useEffect(() => {
-    invoke('set_window_constraints', { collapsed: isCollapsed }).catch(console.error);
-  }, [isCollapsed]);
+    invoke('set_window_constraints', { collapsed: isCollapsed, zoomLevel }).catch(console.error);
+  }, [isCollapsed, zoomLevel]);
 
   const [isEditMode, setIsEditMode] = useState(false);
   const [hiddenInterfaces, setHiddenInterfaces] = useState<string[]>(() => {
@@ -142,18 +144,18 @@ export function InterfaceList({
   };
 
   return (
-    <div className={`flex flex-col h-full bg-neutral-900 border-r border-neutral-700 transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${isCollapsed ? 'w-16 min-w-[4rem] max-w-[4rem]' : 'w-[255px] min-w-[255px] max-w-[255px]'}`}>
+    <div className={`flex flex-col h-full bg-neutral-900 border-r border-neutral-700 transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${isCollapsed ? 'w-16 min-w-[4rem] max-w-[4rem]' : 'w-[15.9375rem] min-w-[15.9375rem] max-w-[15.9375rem]'}`}>
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 relative flex items-center overflow-hidden shrink-0 w-full">
         {/* Clickable Header Button */}
         <div 
           className={`absolute left-2 h-9 cursor-pointer hover:bg-neutral-700 rounded transition-all duration-300 flex items-center overflow-hidden whitespace-nowrap ${
-            isCollapsed ? 'w-12 pl-[17px]' : 'w-[115px] pl-2'
+            isCollapsed ? 'w-12 pl-[1.0625rem]' : 'w-[7.1875rem] pl-2'
           }`}
           onClick={() => setIsCollapsed(!isCollapsed)}
           title={isCollapsed ? "Expand Interfaces" : "Collapse Interfaces"}
         >
           <Network 
-            size={14} 
+            size="0.875rem" 
             className={`shrink-0 ${isSniffing ? "text-green-500 animate-pulse" : (activeIp ? "text-amber-500" : "text-neutral-400")}`} 
           />
           <h2 className={`text-xs ml-2 font-semibold text-neutral-200 uppercase tracking-tight transition-all duration-300 delay-75 ${
@@ -172,7 +174,7 @@ export function InterfaceList({
             className="p-1.5 rounded-md hover:bg-neutral-700 transition-all text-neutral-500 hover:text-white"
             title="Refresh Network Interfaces"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size="0.875rem" />
           </button>
           <button
             onClick={() => setIsEditMode(!isEditMode)}
@@ -181,14 +183,14 @@ export function InterfaceList({
             }`}
             title="Interface Configuration"
           >
-            <Settings size={14} />
+            <Settings size="0.875rem" />
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         {interfaces.length === 0 ? (
-          <div className="p-3 text-neutral-600 text-[11px] italic">
+          <div className="p-3 text-neutral-600 text-[0.6875rem] italic">
             Scanning...
           </div>
         ) : (
@@ -208,7 +210,7 @@ export function InterfaceList({
                          className="p-3 bg-neutral-800 border-b border-neutral-700 space-y-3"
                     >
                         <div className="flex items-center justify-between mb-2">
-                             <span className="text-[10px] font-bold text-neutral-500 uppercase tracking-widest">{iface.name}</span>
+                             <span className="text-[0.625rem] font-bold text-neutral-500 uppercase tracking-widest">{iface.name}</span>
                              <div className="flex gap-2">
                                  <button 
                                      onClick={async (e) => { 
@@ -218,7 +220,7 @@ export function InterfaceList({
                                      }} 
                                      className="text-neutral-500 hover:text-white"
                                  >
-                                     <X size={14} />
+                                     <X size="0.875rem" />
                                  </button>
                              </div>
                         </div>
@@ -226,18 +228,18 @@ export function InterfaceList({
                         <div className="flex items-center gap-3 bg-neutral-900 p-1 rounded-md mb-2">
                             <button 
                                 onClick={() => setEditForm({...editForm, isDhcp: true})}
-                                className={`flex-1 py-1 text-[10px] font-bold rounded ${editForm.isDhcp ? 'bg-neutral-700 text-white' : 'text-neutral-600 hover:text-neutral-400'}`}
+                                className={`flex-1 py-1 text-[0.625rem] font-bold rounded ${editForm.isDhcp ? 'bg-neutral-700 text-white' : 'text-neutral-600 hover:text-neutral-400'}`}
                             >DHCP</button>
                             <button 
                                 onClick={() => setEditForm({...editForm, isDhcp: false})}
-                                className={`flex-1 py-1 text-[10px] font-bold rounded ${!editForm.isDhcp ? 'bg-neutral-700 text-white' : 'text-neutral-600 hover:text-neutral-400'}`}
+                                className={`flex-1 py-1 text-[0.625rem] font-bold rounded ${!editForm.isDhcp ? 'bg-neutral-700 text-white' : 'text-neutral-600 hover:text-neutral-400'}`}
                             >STATIC</button>
                         </div>
 
                         {!editForm.isDhcp && (
                             <div className="space-y-2">
                                 <div className="space-y-1">
-                                    <label className="text-[9px] text-neutral-500 uppercase font-bold pl-1">IP Address</label>
+                                    <label className="text-[0.5625rem] text-neutral-500 uppercase font-bold pl-1">IP Address</label>
                                     <input 
                                         type="text" 
                                         value={editForm.ip}
@@ -258,7 +260,7 @@ export function InterfaceList({
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="text-[9px] text-neutral-500 uppercase font-bold pl-1">Subnet Mask</label>
+                                    <label className="text-[0.5625rem] text-neutral-500 uppercase font-bold pl-1">Subnet Mask</label>
                                     <input 
                                         type="text" 
                                         value={editForm.mask}
@@ -284,9 +286,9 @@ export function InterfaceList({
                         <button 
                             disabled={isPending}
                             onClick={(e) => { e.stopPropagation(); handleApply(iface); }}
-                            className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[0.625rem] font-bold rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
                         >
-                            {isPending ? <RefreshCw size={12} className="animate-spin" /> : <Check size={12} />}
+                            {isPending ? <RefreshCw size="0.75rem" className="animate-spin" /> : <Check size="0.75rem" />}
                             APPLY CHANGES
                         </button>
                     </div>
@@ -306,7 +308,7 @@ export function InterfaceList({
                 >
                   {isCollapsed ? (
                     <div className="flex flex-col items-center justify-center py-1 w-full">
-                        <span className={`text-[10px] font-bold text-center tracking-wider px-1 truncate w-full ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
+                        <span className={`text-[0.625rem] font-bold text-center tracking-wider px-1 truncate w-full ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
                           {iface.name.substring(0, 3).toUpperCase()}
                         </span>
                     </div>
@@ -327,7 +329,7 @@ export function InterfaceList({
                               }}
                               className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-neutral-600 text-neutral-400 hover:text-white transition-all cursor-pointer shrink-0"
                             >
-                              <Pencil size={12} />
+                              <Pencil size="0.75rem" />
                             </div>
                           )}
                         </div>

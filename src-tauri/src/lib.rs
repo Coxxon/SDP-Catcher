@@ -516,9 +516,11 @@ fn get_arp_table(state: State<'_, AppState>) -> HashMap<String, DeviceInfo> {
 }
 
 #[tauri::command]
-fn set_window_constraints(window: tauri::Window, collapsed: bool) {
-    let min_width = if collapsed { 609.0 } else { 800.0 };
-    let _ = window.set_min_size(Some(tauri::LogicalSize::new(min_width, 600.0)));
+fn set_window_constraints(window: tauri::Window, collapsed: bool, zoom_level: f64) {
+    let base_min_width = if collapsed { 609.0 } else { 800.0 };
+    let min_width = base_min_width * zoom_level;
+    let min_height = 600.0 * zoom_level;
+    let _ = window.set_min_size(Some(tauri::LogicalSize::new(min_width, min_height)));
     
     if let Ok(current_size) = window.inner_size() {
         if let Ok(scale_factor) = window.scale_factor() {

@@ -142,10 +142,10 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   }, [sdp, sourceIp]);
 
   return (
-    <div className="flex flex-col h-full bg-neutral-900 flex-1 basis-[500px] min-w-[290px] overflow-hidden">
+    <div className="flex flex-col h-full bg-neutral-900 flex-1 basis-[31.25rem] min-w-[18.125rem] overflow-hidden">
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between w-full shrink-0 px-3">
         <div className="flex items-center gap-2 min-w-0">
-          <FileText size={14} className="text-neutral-400" />
+          <FileText size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight truncate">SDP</h2>
         </div>
 
@@ -153,21 +153,21 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
           <button
             onClick={handleCopy}
             disabled={!sdp}
-            className="flex items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-wider
+            className="flex items-center gap-2 px-3 py-1 text-[0.625rem] font-bold uppercase tracking-wider
                      bg-neutral-900 border border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-white transition-all
                      disabled:opacity-20 disabled:cursor-not-allowed"
           >
-            {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+            {copied ? <Check size="0.75rem" className="text-green-500" /> : <Copy size="0.75rem" />}
             {copied ? "COPIED" : "COPY"}
           </button>
           <button
             onClick={handleSave}
             disabled={!sdp}
-            className="flex items-center gap-2 px-3 py-1 text-[10px] font-bold uppercase tracking-wider
+            className="flex items-center gap-2 px-3 py-1 text-[0.625rem] font-bold uppercase tracking-wider
                      bg-neutral-700 hover:bg-neutral-600 text-white transition-all
                      disabled:opacity-20 disabled:cursor-not-allowed"
           >
-            <Download size={12} />
+            <Download size="0.75rem" />
             SAVE
           </button>
         </div>
@@ -177,14 +177,14 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
         {sdp ? (
           <div className="max-w-none">
              <div className="flex items-center gap-2 mb-4 opacity-50">
-               <Activity size={12} />
-               <span className="text-[10px] uppercase tracking-widest">{sourceIp}</span>
+               <Activity size="0.75rem" />
+               <span className="text-[0.625rem] uppercase tracking-widest">{sourceIp}</span>
              </div>
              
              <pre className="leading-relaxed selection:bg-neutral-700 overflow-visible whitespace-pre">
                 {sdp.split(/\r?\n/).map((line, i) => (
                   <div key={i} className="flex gap-4 hover:bg-neutral-800/10 -mx-4 px-4 transition-colors">
-                    <span className="w-5 shrink-0 text-right text-neutral-700 select-none font-bold text-[10px] leading-tight flex items-center">{i + 1}</span>
+                    <span className="w-5 shrink-0 text-right text-neutral-700 select-none font-bold text-[0.625rem] leading-tight flex items-center">{i + 1}</span>
                     <span className="whitespace-nowrap">{line}</span>
                   </div>
                 ))}
@@ -192,8 +192,8 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
           </div>
         ) : (
           <div className="h-full flex flex-col items-center justify-center text-neutral-800 space-y-4">
-             <Activity size={32} className="animate-pulse opacity-20" />
-             <p className="text-[10px] font-bold tracking-[0.3em] uppercase opacity-20">Monitoring Network</p>
+             <Activity size="2rem" className="animate-pulse opacity-20" />
+             <p className="text-[0.625rem] font-bold tracking-[0.3em] uppercase opacity-20">Monitoring Network</p>
           </div>
         )}
       </div>
@@ -204,33 +204,33 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
           className="w-full h-8 flex items-center justify-between px-3 hover:bg-neutral-700/50 transition-all font-sans"
         >
-          <span className="text-[10px] font-bold text-neutral-400 tracking-wider">STREAM INFOS</span>
-          {isDrawerOpen ? <ChevronDown size={14} className="text-neutral-500" /> : <ChevronUp size={14} className="text-neutral-500" />}
+          <span className="text-[0.625rem] font-bold text-neutral-400 tracking-wider">STREAM INFOS</span>
+          {isDrawerOpen ? <ChevronDown size="0.875rem" className="text-neutral-500" /> : <ChevronUp size="0.875rem" className="text-neutral-500" />}
         </button>
 
         {isDrawerOpen && (
           <div className="px-3 pb-3 space-y-1 font-sans">
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Resolution</span>
-              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.resolution}</span>
+              <span className="text-[0.625rem] text-neutral-500 font-bold uppercase tracking-tight">Resolution</span>
+              <span className="text-[0.625rem] text-neutral-200 font-mono">{streamInfo?.resolution}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Sampling Rate</span>
-              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.samplingRate}</span>
+              <span className="text-[0.625rem] text-neutral-500 font-bold uppercase tracking-tight">Sampling Rate</span>
+              <span className="text-[0.625rem] text-neutral-200 font-mono">{streamInfo?.samplingRate}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Nb Channels</span>
-              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.nbChannels}</span>
+              <span className="text-[0.625rem] text-neutral-500 font-bold uppercase tracking-tight">Nb Channels</span>
+              <span className="text-[0.625rem] text-neutral-200 font-mono">{streamInfo?.nbChannels}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Packet Time</span>
-              <span className="text-[10px] text-neutral-200 font-mono">{streamInfo?.ptime}</span>
+              <span className="text-[0.625rem] text-neutral-500 font-bold uppercase tracking-tight">Packet Time</span>
+              <span className="text-[0.625rem] text-neutral-200 font-mono">{streamInfo?.ptime}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-tight">Master Clock</span>
+              <span className="text-[0.625rem] text-neutral-500 font-bold uppercase tracking-tight">Master Clock</span>
               <span 
                 onClick={cycleDisplayMode}
-                className={`text-[10px] text-neutral-200 font-mono font-bold tracking-tight px-1 rounded transition-all underline decoration-dotted decoration-neutral-600 ${hasIp || hasName ? 'cursor-pointer hover:text-white hover:bg-white/5' : ''}`}
+                className={`text-[0.625rem] text-neutral-200 font-mono font-bold tracking-tight px-1 rounded transition-all underline decoration-dotted decoration-neutral-600 ${hasIp || hasName ? 'cursor-pointer hover:text-white hover:bg-white/5' : ''}`}
                 title={hasIp || hasName ? `Current: ${displayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)` : "No other info available for this MAC"}
               >
                 {getDisplayText()}

@@ -354,6 +354,7 @@ function App() {
           setIsSniffing={setIsSniffing}
           onRefreshInterfaces={refreshInterfaces}
           onStartSniffing={startGlobalSniffing}
+          zoomLevel={zoomLevel}
         />
         <StreamTree
           devices={filteredDevices}
@@ -372,7 +373,7 @@ function App() {
       <footer className="h-7 bg-zinc-950 border-t border-zinc-800 flex items-center justify-between px-4 z-50 shrink-0">
         <div className="flex items-center gap-6">
           {/* GMC Footer */}
-          <div className="flex items-center gap-2 text-[10px] font-bold">
+          <div className="flex items-center gap-2 text-[0.625rem] font-bold">
             <div className={`w-1.5 h-1.5 rounded-full transition-all duration-300 
                             ${isTransitioning ? 'bg-orange-500 animate-pulse shadow-[0_0_10px_rgba(249,115,22,0.8)]' : 
                               isPtpActive ? 'bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 
@@ -396,7 +397,7 @@ function App() {
                  className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0"
                  title="Zoom Out"
               >-</button>
-              <span className="text-[9px] text-zinc-400 font-mono w-6 text-center select-none">{Math.round(zoomLevel * 100)}%</span>
+              <span className="text-[0.5625rem] text-zinc-400 font-mono w-6 text-center select-none">{Math.round(zoomLevel * 100)}%</span>
               <button 
                  onClick={() => setZoomLevel(prev => Math.min(1.3, prev + 0.1))}
                  className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0 pb-0.5"
@@ -405,17 +406,17 @@ function App() {
             </div>
 
             <div className="flex items-center gap-2">
-                <span className="text-[9px] text-zinc-600 font-bold uppercase tracking-wider">Default SAP Timeout</span>
-                <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[36px]">
+                <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">Default SAP Timeout</span>
+                <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[2.25rem]">
                     <input 
                         type="number" 
                         min="60"
                         max="300"
                         value={unknownTimeout}
                         onChange={(e) => handleTimeoutChange(e.target.value)}
-                        className="w-5 bg-transparent text-[10px] text-zinc-300 font-mono text-center focus:outline-none appearance-none"
+                        className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none"
                     />
-                    <span className="text-[9px] text-zinc-600 font-bold ml-0.5">s</span>
+                    <span className="text-[0.5625rem] text-zinc-600 font-bold ml-0.5">s</span>
                 </div>
             </div>
         </div>
