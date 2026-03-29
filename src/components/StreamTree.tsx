@@ -336,11 +336,11 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
           
           <div className="relative group/status flex items-center justify-center min-w-[1.25rem] h-5">
-            <div className={`absolute inset-[-4px] -z-10 blur-[8px] opacity-60 rounded-full ${
+            <div className={`absolute inset-[-4px] z-0 blur-[8px] opacity-60 rounded-full ${
               globalStatus === 'online' ? 'bg-green-500' : 
               globalStatus === 'standby' ? 'bg-orange-500' : 'bg-red-500'
             }`} />
-            <span className="text-white font-bold px-1 py-0.5 text-xs shadow-sm drop-shadow-[0_0_8px_rgba(0,0,0,0.5)]">
+            <span className="relative z-10 text-white font-bold px-1 py-0.5 text-xs drop-shadow-[0_0_8px_rgba(0,0,0,0.5)]">
               {sortedDevices.reduce((acc, d) => acc + d.streams.length, 0)}
             </span>
             
