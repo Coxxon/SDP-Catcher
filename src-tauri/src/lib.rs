@@ -37,6 +37,7 @@ struct PtpPayload {
     name: String,
     ip: String,
     interface_ip: String,
+    domain: u8,
 }
 
 #[derive(Serialize, Clone)]
@@ -260,6 +261,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                         if let Ok((size, src)) = udp_socket.recv_from(&mut buf) {
                             let payload = &buf[..size];
                             if payload.len() >= 44 && payload[0] & 0x0F == 0x0B {
+                                let domain = payload[4];
                                 let clock_id = &payload[20..28];
                                 let ptp_id = clock_id.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("-");
                                 let source_ip = src.ip().to_string();
@@ -295,6 +297,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                     name,
                                     ip: final_ip,
                                     interface_ip: matched_interface,
+                                    domain,
                                 }).ok();
                             }
                         }

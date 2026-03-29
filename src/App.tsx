@@ -67,6 +67,13 @@ function App() {
   const [arpTable, setArpTable] = useState<Record<string, { ip: string; name: string }>>({});
   const previousGmcId = useRef<string | null>(null);
 
+  const [selectedDomain, setSelectedDomain] = useState(0);
+  const selectedDomainRef = useRef(selectedDomain);
+
+  useEffect(() => {
+    selectedDomainRef.current = selectedDomain;
+  }, [selectedDomain]);
+
   const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string; sessionInfo: string | null } => {
     const lines = raw.split(/\r?\n/);
     let name = "Unknown Stream";
@@ -208,13 +215,14 @@ function App() {
       }
     );
 
-    const unlistenPtp = listen<{ptp_id: string, name: string, ip: string, interface_ip: string}>("ptp-clock-update", (event) => {
-      const { ptp_id, interface_ip } = event.payload;
+    const unlistenPtp = listen<{ptp_id: string, name: string, ip: string, interface_ip: string, domain: number}>("ptp-clock-update", (event) => {
+      const { ptp_id, interface_ip, domain } = event.payload;
       
       // Flexible IP Isolation (remove mask if present)
       const selectedIp = activeIpRef.current?.split("/")[0] || "";
 
       if (interface_ip !== selectedIp) return;
+      if (domain !== selectedDomainRef.current) return;
 
 
       console.log("✅ GMC MATCH: ", interface_ip);
@@ -386,6 +394,18 @@ function App() {
             >
               {isPtpActive ? getFooterGmcText() : `No PTP data on ${activeIp?.split('/')[0] || 'Unknown'}`}
             </span>
+            <div className="flex items-center gap-1 ml-2 text-[0.5625rem] font-bold tracking-wider text-neutral-500">
+              DOM:
+              <input
+                type="number"
+                min="0"
+                max="127"
+                value={selectedDomain}
+                onChange={(e) => setSelectedDomain(parseInt(e.target.value) || 0)}
+                className="w-6 bg-transparent text-neutral-300 font-mono text-center appearance-none outline-none focus:text-white transition-colors"
+                title="PTP Domain Number Filter"
+              />
+            </div>
           </div>
         </div>
 

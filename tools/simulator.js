@@ -109,6 +109,7 @@ const generatePayload = (deviceName, deviceIp, streamName, multicastIp, specific
 const createPtpAnnounceBuffer = (ptpId) => {
   const buf = Buffer.alloc(64);
   buf[0] = 0x0B; // Announce messageType
+  buf[4] = 0;    // domainNumber
   // ClockIdentity offset 20
   const hex = ptpId.replace(/-/g, '');
   for (let i = 0; i < 8; i++) {
