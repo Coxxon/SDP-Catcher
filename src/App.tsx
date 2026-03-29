@@ -433,7 +433,6 @@ function App() {
             <span 
               onClick={isPtpActive ? cycleFooterDisplayMode : undefined}
               className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer underline decoration-dotted decoration-neutral-600' : 'text-neutral-600 italic cursor-not-allowed'}`}
-              title={isPtpActive ? `Mode: ${footerDisplayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)` : "PTP Clock Offline"}
             >
               {isPtpActive ? getFooterGmcText() : (activeIp ? "No PTP data for this PTP Domain" : "Select Interface")}
             </span>
@@ -458,7 +457,7 @@ function App() {
                           }
                         }}
                         className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none translate-y-[0.0625rem]"
-                        title="PTP Domain Number Filter (0-255, Enter to apply)"
+                        title="0-255"
                     />
                 </div>
             </div>
@@ -480,7 +479,7 @@ function App() {
                           }
                         }}
                         className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none translate-y-[0.0625rem]"
-                        title="SAP Timeout (60-300s, Enter to apply)"
+                        title="60-300"
                     />
                     <span className="text-[0.5625rem] text-zinc-600 font-bold ml-0.5">s</span>
                 </div>
@@ -491,12 +490,10 @@ function App() {
               <button 
                  onClick={() => setZoomLevel(prev => Math.max(1.0, prev - 0.1))}
                  className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0"
-                 title="Zoom Out"
               >-</button>
               <button 
                  onClick={() => setZoomLevel(prev => Math.min(1.3, prev + 0.1))}
                  className="text-zinc-500 hover:text-white px-1 font-mono text-xs transition-colors leading-none shrink-0 pb-0.5"
-                 title="Zoom In"
               >+</button>
             </div>
         </div>

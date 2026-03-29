@@ -152,7 +152,6 @@ export function InterfaceList({
             isCollapsed ? 'w-12 pl-[1.0625rem]' : 'w-[7.1875rem] pl-2'
           }`}
           onClick={() => setIsCollapsed(!isCollapsed)}
-          title={isCollapsed ? "Expand Interfaces" : "Collapse Interfaces"}
         >
           <Network 
             size="0.875rem" 

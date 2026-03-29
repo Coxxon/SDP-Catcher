@@ -244,7 +244,6 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
               <span 
                 onClick={cycleDisplayMode}
                 className={`text-[0.625rem] text-neutral-200 font-mono font-bold tracking-tight px-1 rounded transition-all underline decoration-dotted decoration-neutral-600 ${hasIp || hasName ? 'cursor-pointer hover:text-white hover:bg-white/5' : ''}`}
-                title={hasIp || hasName ? `Current: ${displayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)` : "No other info available for this MAC"}
               >
                 {getDisplayText()}
               </span>

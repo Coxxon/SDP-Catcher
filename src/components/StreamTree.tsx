@@ -144,8 +144,8 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         {/* Animated Search Bar Overlay */}
         <div 
           ref={searchContainerRef}
-          className={`absolute inset-0 z-10 flex items-center px-3 bg-zinc-950 transition-all duration-300 ease-in-out origin-right ${
-            isSearchOpen ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0 pointer-events-none'
+          className={`absolute inset-0 z-10 flex items-center px-3 bg-zinc-950 transition-transform duration-300 ease-in-out origin-right ${
+            isSearchOpen ? 'scale-x-100' : 'scale-x-0 pointer-events-none'
           }`}
         >
           <Search size="0.875rem" className="text-neutral-500 shrink-0" />
@@ -177,31 +177,31 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         </div>
 
         {/* Normal Header Content */}
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 transition-opacity duration-200 ${isSearchOpen ? 'opacity-0' : 'opacity-100'}`}>
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
           <span className="text-neutral-500 font-bold px-1 py-0.5 text-xs">
             {filteredDevices.reduce((acc, d) => acc + d.streams.length, 0)}
           </span>
         </div>
-        <div className="flex items-center gap-1">
+        <div className={`flex items-center gap-1 transition-opacity duration-200 ${isSearchOpen ? 'opacity-0' : 'opacity-100'}`}>
           <button
             onClick={() => setIsSearchOpen(true)}
-            title="Search streams"
+            title="Search"
             className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans"
           >
             <Search size="0.875rem" />
           </button>
           <button
             onClick={toggleAll}
-            title={isAllExpanded ? "Tout replier" : "Tout déplier"}
+            title={isAllExpanded ? "Collapse all" : "Expand all"}
             className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans"
           >
             {isAllExpanded ? <ChevronsDownUp size="0.875rem" /> : <ChevronsUpDown size="0.875rem" />}
           </button>
           <button
             onClick={onClearOffline}
-            title="Supprimer les flux hors-ligne"
+            title="Clear offline devices/streams"
             className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-red-400 transition-all font-sans"
           >
             <Trash2 size="0.875rem" />
@@ -274,7 +274,6 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                       <div 
                         onClick={() => handleTimeoutToggle(device.ip)}
                         className="flex items-center justify-between group/sap h-4.5 cursor-pointer transition-colors"
-                        title="Click to toggle between strict OUI timeout and user-defined global timeout"
                       >
                         <span className="text-[0.5625rem] text-neutral-500 uppercase font-bold tracking-wider whitespace-nowrap transition-colors">
                           SAP Timeout {useDefaultTimeout[device.ip] ? "(DEFAULT)" : ""}
