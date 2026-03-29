@@ -434,6 +434,7 @@ function App() {
                           if (e.key === 'Enter') {
                             const val = Math.min(255, parseInt(ptpDomainDraft) || 0);
                             setSelectedDomain(val);
+                            setPtpDomainDraft(val.toString());
                             (e.target as HTMLInputElement).blur();
                           }
                         }}
@@ -455,6 +456,7 @@ function App() {
                           if (e.key === 'Enter') {
                             const val = Math.min(300, Math.max(60, parseInt(sapTimeoutDraft) || 60));
                             handleTimeoutChange(val.toString());
+                            setSapTimeoutDraft(val.toString());
                             (e.target as HTMLInputElement).blur();
                           }
                         }}
