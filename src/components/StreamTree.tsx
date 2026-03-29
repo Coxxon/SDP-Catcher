@@ -335,10 +335,14 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
           
-          <div className="relative group/status flex items-center gap-1 ml-1.5 focus:outline-none">
-            <div className={`w-2 h-2 shrink-0 translate-y-[1px] ${getStatusClasses(globalStatus)}`} />
-            <span className="text-neutral-500 font-bold text-[10px] tabular-nums tracking-tighter">
+          <div className="relative group/status flex items-center justify-center">
+            <span className="relative z-10 text-neutral-500 font-bold text-xs px-1">
               {sortedDevices.reduce((acc, d) => acc + d.streams.length, 0)}
+              
+              {/* Status Badge LED (Top-Left, Layered behind/under) */}
+              <div className="absolute -top-1 -left-1 flex items-center justify-center -z-10">
+                <div className={`w-2 h-2 ${getStatusClasses(globalStatus)}`} />
+              </div>
             </span>
             
             {/* Diagnostic Tooltip */}
