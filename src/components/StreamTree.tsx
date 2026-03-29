@@ -24,11 +24,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
    const [isFocusVisible, setIsFocusVisible] = useState(false);
    const focusTimer = useRef<any>(null);
 
-   const showFocusTemporarily = () => {
-     setIsFocusVisible(true);
-     if (focusTimer.current) clearTimeout(focusTimer.current);
-     focusTimer.current = setTimeout(() => setIsFocusVisible(false), 2000);
-   };
+   useEffect(() => {
+     if (focusedId) {
+       setIsFocusVisible(true);
+       if (focusTimer.current) clearTimeout(focusTimer.current);
+       focusTimer.current = setTimeout(() => setIsFocusVisible(false), 2000);
+     }
+   }, [focusedId]);
 
   const ipToNumber = (ip: string) => {
     return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0);
@@ -145,7 +147,6 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           } else {
             setFocusedId(visibleItems[currentIndex + 1].id);
           }
-          showFocusTemporarily();
           break;
         case 'ArrowUp':
           e.preventDefault();
@@ -154,7 +155,6 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           } else {
             setFocusedId(visibleItems[currentIndex - 1].id);
           }
-          showFocusTemporarily();
           break;
         case 'ArrowRight':
           if (focusedId) {
@@ -184,10 +184,8 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
               e.preventDefault();
               if (item.type === 'device') {
                 toggleDevice(item.id);
-                showFocusTemporarily();
               } else if (item.stream) {
                 onStreamSelect(item.stream);
-                showFocusTemporarily();
               }
             }
           }
@@ -391,7 +389,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                     isVisible ? 'bg-neutral-800/80' : 'bg-neutral-950 hover:bg-neutral-900/60'
                   }`}
                 >
-                  <div className={`absolute inset-y-0 -left-px w-[2px] bg-zinc-500 z-20 transition-opacity duration-500 ${
+                  <div className={`absolute top-0 -bottom-px -left-px w-[3px] bg-zinc-400 z-20 transition-opacity duration-500 ${
                     isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
                   }`} />
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
@@ -487,7 +485,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                                 : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
                           }`}
                         >
-                          <div className={`absolute inset-y-0 -left-px w-[2px] bg-zinc-500 z-20 transition-opacity duration-500 ${
+                          <div className={`absolute top-0 -bottom-px -left-px w-[3px] bg-zinc-400 z-20 transition-opacity duration-500 ${
                             isStreamVisible && selectedStreamId !== stream.id ? 'opacity-100' : 'opacity-0 pointer-events-none'
                           }`} />
                           <div className="flex items-center gap-2 w-full relative z-10">
