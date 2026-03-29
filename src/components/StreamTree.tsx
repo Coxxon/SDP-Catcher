@@ -233,8 +233,8 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
       import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ipToOpen}`));
     } else {
       navigator.clipboard.writeText(textToCopy);
-      window.dispatchEvent(new CustomEvent('show-copy-toast', { 
-        detail: { x: e.clientX, y: e.clientY } 
+      window.dispatchEvent(new CustomEvent('show-copy-toast', {
+        detail: { x: e.clientX, y: e.clientY }
       }));
     }
   };
@@ -334,32 +334,32 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         <div className={`flex items-center gap-2 transition-opacity duration-300 ${isSearchOpen ? 'opacity-0 duration-100' : 'opacity-100 delay-150'}`}>
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
-          
+
           <div className="relative group/status flex items-center justify-center">
-            <span className="relative z-10 text-neutral-500 font-bold text-xs px-1">
+            <span className="relative z-10 text-neutral-400 font-bold text-xs px-1">
               {sortedDevices.reduce((acc, d) => acc + d.streams.length, 0)}
-              
+
               {/* Status Badge LED (Top-Left, Layered behind/under) */}
-              <div className="absolute -top-1 -left-1 flex items-center justify-center -z-10">
-                <div className={`w-2 h-2 ${getStatusClasses(globalStatus)}`} />
+              <div className="absolute -top-0.5 -right-1 flex items-center justify-center -z-10">
+                <div className={`w-1.5 h-1.5 ${getStatusClasses(globalStatus)}`} />
               </div>
             </span>
-            
+
             {/* Diagnostic Tooltip */}
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-32 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl py-2 px-3 z-[100] opacity-0 group-hover/status:opacity-100 pointer-events-none transition-opacity duration-200">
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
-                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
                   <span className="text-[10px] text-zinc-400">Online</span>
                   <span className="text-[10px] font-bold text-white">{stats.online}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="w-2 h-2 rounded-full bg-orange-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
                   <span className="text-[10px] text-zinc-400">Standby</span>
                   <span className="text-[10px] font-bold text-white">{stats.standby}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="w-2 h-2 rounded-full bg-red-500" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                   <span className="text-[10px] text-zinc-400">Offline</span>
                   <span className="text-[10px] font-bold text-white">{stats.offline}</span>
                 </div>
@@ -460,7 +460,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   </div>
                   <div className="relative pointer-events-none">
                     <HardDrive size="0.875rem" className={`transition-colors ${isVisible ? "text-neutral-200" : "text-neutral-500 group-hover:text-neutral-300"}`} />
-                    <div className={`absolute -top-1 -right-1 w-2 h-2 ${statusClass}`} />
+                    <div className={`absolute -top-0.5 -right-1 w-1.5 h-1.5 ${statusClass}`} />
                   </div>
 
                   <div className="relative z-10 flex flex-col items-start leading-none min-w-0 text-left">
@@ -545,8 +545,8 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                                 e.preventDefault();
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(stream.name);
-                                window.dispatchEvent(new CustomEvent('show-copy-toast', { 
-                                  detail: { x: e.clientX, y: e.clientY } 
+                                window.dispatchEvent(new CustomEvent('show-copy-toast', {
+                                  detail: { x: e.clientX, y: e.clientY }
                                 }));
                               }}
                               className={`truncate flex-1 text-left transition-colors ${(selectedStreamId === stream.id || isStreamVisible) ? 'text-white' : 'text-zinc-300'
@@ -560,8 +560,8 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                               e.preventDefault();
                               e.stopPropagation();
                               navigator.clipboard.writeText(stream.multicastIp);
-                              window.dispatchEvent(new CustomEvent('show-copy-toast', { 
-                                detail: { x: e.clientX, y: e.clientY } 
+                              window.dispatchEvent(new CustomEvent('show-copy-toast', {
+                                detail: { x: e.clientX, y: e.clientY }
                               }));
                             }}
                             className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${isStreamVisible ? 'text-zinc-400' : 'text-zinc-500'
