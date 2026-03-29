@@ -387,13 +387,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                     setIsFocusVisible(true);
                     if (focusTimer.current) clearTimeout(focusTimer.current);
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 transition-all group relative overflow-hidden ${
+                  className={`w-full flex items-center gap-2 px-3 py-2 transition-all duration-500 group relative ${
                     isVisible ? 'bg-neutral-800/80' : 'bg-neutral-950 hover:bg-neutral-900/60'
                   }`}
                 >
-                  {isVisible && (
-                    <div className="absolute inset-y-0 left-0 w-[2px] bg-zinc-500 z-20" />
-                  )}
+                  <div className={`absolute inset-y-0 -left-px w-[2px] bg-zinc-500 z-20 transition-opacity duration-500 ${
+                    isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                  }`} />
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
                     <ChevronRight size="0.875rem" className={isVisible ? "text-neutral-300" : "text-neutral-600"} />
                   </div>
@@ -479,7 +479,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                             setIsFocusVisible(true);
                             if (focusTimer.current) clearTimeout(focusTimer.current);
                           }}
-                          className={`w-full flex flex-col items-start py-2 pl-8 pr-3 text-[0.75rem] transition-all border-b border-neutral-800/30 relative overflow-hidden ${
+                          className={`w-full flex flex-col items-start py-2 pl-8 pr-3 text-[0.75rem] transition-all duration-500 border-b border-neutral-800/30 relative ${
                             selectedStreamId === stream.id
                               ? "bg-neutral-800 text-white font-bold"
                               : isStreamVisible 
@@ -487,9 +487,9 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                                 : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
                           }`}
                         >
-                          {isStreamVisible && selectedStreamId !== stream.id && (
-                            <div className="absolute inset-y-0 left-0 w-[2px] bg-zinc-500 z-20" />
-                          )}
+                          <div className={`absolute inset-y-0 -left-px w-[2px] bg-zinc-500 z-20 transition-opacity duration-500 ${
+                            isStreamVisible && selectedStreamId !== stream.id ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                          }`} />
                           <div className="flex items-center gap-2 w-full relative z-10">
                             <div className={`w-1.5 h-1.5 ${streamStatusClass}`} />
                             <span 
