@@ -168,7 +168,7 @@ export function InterfaceList({
         >
           <Network 
             size="0.875rem" 
-            className={`shrink-0 ${isSniffing ? "text-green-500 animate-pulse" : (activeIp ? "text-amber-500" : "text-neutral-400")}`} 
+            className={`shrink-0 ${isSniffing ? "text-green-500" : (activeIp ? "text-amber-500" : "text-neutral-400")}`} 
           />
           <h2 className={`text-xs ml-2 font-semibold text-neutral-200 uppercase tracking-tight transition-all duration-300 delay-75 ${
             isCollapsed ? 'opacity-0 translate-x-4' : 'opacity-100 translate-x-0'
