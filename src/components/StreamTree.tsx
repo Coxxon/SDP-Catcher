@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp, Search, X, ArrowDownAZ } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Stream, Device } from "../App";
@@ -20,6 +20,63 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'ip'>('name');
   const [useDefaultTimeout, setUseDefaultTimeout] = useState<Record<string, boolean>>({});
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+
+  const ipToNumber = (ip: string) => {
+    return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0);
+  };
+
+  const filteredDevices = devices.reduce((acc: Device[], device) => {
+    const q = searchQuery.toLowerCase();
+
+    // Check if the device itself matches the query
+    const deviceMatch =
+      device.name.toLowerCase().includes(q) ||
+      device.ip.toLowerCase().includes(q) ||
+      device.mac.toLowerCase().includes(q) ||
+      device.manufacturer.toLowerCase().includes(q);
+
+    if (deviceMatch) {
+      acc.push(device);
+      return acc;
+    }
+
+    // If the device doesn't match, check if any of its streams do
+    const matchingStreams = device.streams.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      s.multicastIp.toLowerCase().includes(q)
+    );
+
+    if (matchingStreams.length > 0) {
+      acc.push({ ...device, streams: matchingStreams });
+    }
+
+    return acc;
+  }, [] as Device[]);
+
+  const sortedDevices = useMemo(() => {
+    return [...filteredDevices].sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+      } else {
+        return ipToNumber(a.ip) - ipToNumber(b.ip);
+      }
+    });
+  }, [filteredDevices, sortBy]);
+
+  const visibleItems = useMemo(() => {
+    const items: { id: string; type: 'device' | 'stream'; device: Device; stream?: Stream }[] = [];
+    sortedDevices.forEach(device => {
+      items.push({ id: device.ip, type: 'device', device });
+      if (expandedDevices.includes(device.ip)) {
+        [...device.streams].sort((a, b) => a.name.localeCompare(b.name)).forEach(stream => {
+          items.push({ id: stream.id, type: 'stream', device, stream });
+        });
+      }
+    });
+    return items;
+  }, [sortedDevices, expandedDevices]);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const originalTimeouts = useRef<Record<string, number>>({});
@@ -56,45 +113,79 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isSearchOpen, searchQuery]);
 
-  const filteredDevices = devices.reduce((acc: Device[], device) => {
-    const q = searchQuery.toLowerCase();
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't interfere with typing in search input except for Escape/Enter already handled
+      if (document.activeElement?.tagName === 'INPUT') {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+          // Allow starting navigation from search
+          searchInputRef.current?.blur();
+        } else {
+          return;
+        }
+      }
 
-    // Check if the device itself matches the query
-    const deviceMatch =
-      device.name.toLowerCase().includes(q) ||
-      device.ip.toLowerCase().includes(q) ||
-      device.mac.toLowerCase().includes(q) ||
-      device.manufacturer.toLowerCase().includes(q);
+      if (visibleItems.length === 0) return;
 
-    if (deviceMatch) {
-      acc.push(device);
-      return acc;
-    }
+      const currentIndex = visibleItems.findIndex(item => item.id === focusedId);
 
-    // If the device doesn't match, check if any of its streams do
-    const matchingStreams = device.streams.filter(s =>
-      s.name.toLowerCase().includes(q) ||
-      s.multicastIp.toLowerCase().includes(q)
-    );
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          if (currentIndex === -1 || currentIndex === visibleItems.length - 1) {
+            setFocusedId(visibleItems[0].id);
+          } else {
+            setFocusedId(visibleItems[currentIndex + 1].id);
+          }
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          if (currentIndex <= 0) {
+            setFocusedId(visibleItems[visibleItems.length - 1].id);
+          } else {
+            setFocusedId(visibleItems[currentIndex - 1].id);
+          }
+          break;
+        case 'ArrowRight':
+          if (focusedId) {
+            const item = visibleItems.find(i => i.id === focusedId);
+            if (item?.type === 'device' && !expandedDevices.includes(item.id)) {
+              e.preventDefault();
+              toggleDevice(item.id);
+            }
+          }
+          break;
+        case 'ArrowLeft':
+          if (focusedId) {
+            const item = visibleItems.find(i => i.id === focusedId);
+            if (item?.type === 'device' && expandedDevices.includes(item.id)) {
+              e.preventDefault();
+              toggleDevice(item.id);
+            } else if (item?.type === 'stream') {
+              e.preventDefault();
+              setFocusedId(item.device.ip);
+            }
+          }
+          break;
+        case 'Enter':
+          if (focusedId) {
+            const item = visibleItems.find(i => i.id === focusedId);
+            if (item) {
+              e.preventDefault();
+              if (item.type === 'device') {
+                toggleDevice(item.id);
+              } else if (item.stream) {
+                onStreamSelect(item.stream);
+              }
+            }
+          }
+          break;
+      }
+    };
 
-    if (matchingStreams.length > 0) {
-      acc.push({ ...device, streams: matchingStreams });
-    }
-
-    return acc;
-  }, [] as Device[]);
-
-  const ipToNumber = (ip: string) => {
-    return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0);
-  };
-
-  const sortedDevices = [...filteredDevices].sort((a, b) => {
-    if (sortBy === 'name') {
-      return a.name.localeCompare(b.name);
-    } else {
-      return ipToNumber(a.ip) - ipToNumber(b.ip);
-    }
-  });
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [visibleItems, focusedId, expandedDevices, onStreamSelect]);
 
   const isAllExpanded = sortedDevices.length > 0 && sortedDevices.every(d => expandedDevices.includes(d.ip));
 
@@ -253,6 +344,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         ) : (
           sortedDevices.map((device) => {
             const isExpanded = expandedDevices.includes(device.ip);
+            const isFocused = focusedId === device.ip;
             const status = getDeviceStatus(device);
             const statusClass = getStatusClasses(status, device.isGhost);
 
@@ -268,24 +360,40 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
               <div key={device.ip} className="border-b border-neutral-800/50">
                 <button
                   onClick={() => toggleDevice(device.ip)}
-                  className="w-full flex items-center gap-2 px-3 py-2 bg-neutral-950 hover:bg-neutral-900 transition-all group relative overflow-hidden"
+                  onMouseEnter={() => setFocusedId(device.ip)}
+                  className={`w-full flex items-center gap-2 px-3 py-2 transition-all group relative overflow-hidden ${
+                    isFocused ? 'bg-neutral-800/80' : 'bg-neutral-950 hover:bg-neutral-900/60'
+                  }`}
                 >
+                  {isFocused && (
+                    <div className="absolute left-0 top-0 w-0.5 h-full bg-zinc-500 z-20" />
+                  )}
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
-                    <ChevronRight size="0.875rem" className="text-neutral-600" />
+                    <ChevronRight size="0.875rem" className={isFocused ? "text-neutral-300" : "text-neutral-600"} />
                   </div>
                   <div className="relative pointer-events-none">
-                    <HardDrive size="0.875rem" className="text-neutral-500 group-hover:text-neutral-300" />
+                    <HardDrive size="0.875rem" className={`transition-colors ${isFocused ? "text-neutral-200" : "text-neutral-500 group-hover:text-neutral-300"}`} />
                     <div className={`absolute -top-1 -right-1 w-2 h-2 ${statusClass}`} />
                   </div>
 
                   <div className="relative z-10 flex flex-col items-start leading-none min-w-0 text-left">
-                    <span className="text-[0.6875rem] font-bold text-neutral-200 truncate w-full tracking-tight pb-0.5">{device.name}</span>
-                    <span className="text-xs text-zinc-500 font-mono mt-0.5">{device.ip}</span>
+                    <span className={`text-[0.6875rem] font-bold truncate w-full tracking-tight pb-0.5 transition-colors ${
+                      isFocused ? 'text-white' : 'text-neutral-200'
+                    }`}>
+                      {device.name}
+                    </span>
+                    <span className={`text-xs font-mono mt-0.5 transition-colors ${
+                      isFocused ? 'text-zinc-400' : 'text-zinc-500'
+                    }`}>
+                      {device.ip}
+                    </span>
                   </div>
 
                   {/* Background Ghost Logo */}
                   {manufacturerLogos[device.manufacturer.split(' (')[0]] && (
-                    <div className="absolute top-0 right-0 h-full w-24 opacity-[0.40] text-neutral-600 pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden">
+                    <div className={`absolute top-0 right-0 h-full w-24 opacity-[0.40] pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden transition-colors ${
+                      isFocused ? 'text-neutral-500' : 'text-neutral-600'
+                    }`}>
                       {manufacturerLogos[device.manufacturer.split(' (')[0]]}
                     </div>
                   )}
@@ -319,23 +427,35 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                     {[...device.streams].sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
                       const streamStatus = getStreamStatus(stream);
                       const streamStatusClass = getStatusClasses(streamStatus, stream.isGhost);
+                      const isStreamFocused = focusedId === stream.id;
 
                       return (
                         <button
                           key={stream.id}
                           onClick={() => handleStreamClick(stream)}
-                          className={`w-full flex flex-col items-start py-2 px-8 text-[0.75rem] transition-all border-b border-neutral-800/30 ${selectedStreamId === stream.id
-                            ? "bg-neutral-800 text-white font-bold"
-                            : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
-                            }`}
+                          onMouseEnter={() => setFocusedId(stream.id)}
+                          className={`w-full flex flex-col items-start py-2 px-8 text-[0.75rem] transition-all border-b border-neutral-800/30 relative overflow-hidden ${
+                            selectedStreamId === stream.id
+                              ? "bg-neutral-800 text-white font-bold"
+                              : isStreamFocused 
+                                ? "bg-neutral-800/40 text-white"
+                                : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
+                          }`}
                         >
-                          <div className="flex items-center gap-2 w-full">
+                          {isStreamFocused && selectedStreamId !== stream.id && (
+                            <div className="absolute left-[24px] top-0 w-0.5 h-full bg-zinc-600 z-20" />
+                          )}
+                          <div className="flex items-center gap-2 w-full relative z-10">
                             <div className={`w-1.5 h-1.5 ${streamStatusClass}`} />
-                            <span className={`truncate flex-1 text-left ${selectedStreamId === stream.id ? 'text-white' : 'text-zinc-300'}`}>
+                            <span className={`truncate flex-1 text-left transition-colors ${
+                              (selectedStreamId === stream.id || isStreamFocused) ? 'text-white' : 'text-zinc-300'
+                            }`}>
                               {stream.name}
                             </span>
                           </div>
-                          <span className="text-xs text-zinc-500 font-mono mt-0.5 pl-3.5">
+                          <span className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${
+                            isStreamFocused ? 'text-zinc-400' : 'text-zinc-500'
+                          }`}>
                             {stream.multicastIp}
                           </span>
                         </button>
