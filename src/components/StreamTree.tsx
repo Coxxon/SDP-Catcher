@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp, Search, X } from "lucide-react";
+import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp, Search, X, ArrowUpDown } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Stream, Device } from "../App";
 
@@ -18,6 +18,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   const [expandedDevices, setExpandedDevices] = useState<string[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'ip'>('name');
   const [useDefaultTimeout, setUseDefaultTimeout] = useState<Record<string, boolean>>({});
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -81,9 +82,21 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     }
 
     return acc;
-  }, []);
+  }, [] as Device[]);
 
-  const isAllExpanded = filteredDevices.length > 0 && filteredDevices.every(d => expandedDevices.includes(d.ip));
+  const ipToNumber = (ip: string) => {
+    return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0);
+  };
+
+  const sortedDevices = [...filteredDevices].sort((a, b) => {
+    if (sortBy === 'name') {
+      return a.name.localeCompare(b.name);
+    } else {
+      return ipToNumber(a.ip) - ipToNumber(b.ip);
+    }
+  });
+
+  const isAllExpanded = sortedDevices.length > 0 && sortedDevices.every(d => expandedDevices.includes(d.ip));
 
   const toggleAll = () => {
     if (isAllExpanded) {
@@ -183,7 +196,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
           <span className="text-neutral-500 font-bold px-1 py-0.5 text-xs">
-            {filteredDevices.reduce((acc, d) => acc + d.streams.length, 0)}
+            {sortedDevices.reduce((acc, d) => acc + d.streams.length, 0)}
           </span>
         </div>
         <div className={`flex items-center gap-1 transition-opacity duration-300 ${isSearchOpen ? 'opacity-0 duration-100' : 'opacity-100 delay-150'}`}>
@@ -193,6 +206,16 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
             className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans"
           >
             <Search size="0.875rem" />
+          </button>
+          <button
+            onClick={() => setSortBy(prev => prev === 'name' ? 'ip' : 'name')}
+            title={sortBy === 'name' ? 'Sort by IP address' : 'Sort alphabetically'}
+            className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans flex items-center gap-1 group"
+          >
+            <ArrowUpDown size="0.875rem" />
+            <span className="text-[10px] font-bold w-4 text-center opacity-70 group-hover:opacity-100 transition-opacity">
+              {sortBy === 'name' ? 'AZ' : 'IP'}
+            </span>
           </button>
           <button
             onClick={toggleAll}
@@ -216,13 +239,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           <div className="p-4 text-center text-neutral-600 text-xs italic">
             Scanning for SAP...
           </div>
-        ) : filteredDevices.length === 0 ? (
+        ) : sortedDevices.length === 0 ? (
           <div className="p-4 flex flex-col items-center gap-2 text-center text-neutral-500 mt-4">
             <Search size="1.25rem" className="opacity-50" />
             <span className="text-xs italic">No results found</span>
           </div>
         ) : (
-          [...filteredDevices].sort((a, b) => a.name.localeCompare(b.name)).map((device) => {
+          sortedDevices.map((device) => {
             const isExpanded = expandedDevices.includes(device.ip);
             const status = getDeviceStatus(device);
             const statusClass = getStatusClasses(status, device.isGhost);
