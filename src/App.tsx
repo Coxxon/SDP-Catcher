@@ -16,6 +16,7 @@ export interface Stream {
   mac: string;
   manufacturer: string;
   sapTimeoutMs: number;
+  isGhost?: boolean;
 }
 
 export interface Device {
@@ -25,6 +26,7 @@ export interface Device {
   manufacturer: string;
   sapTimeoutMs: number;
   streams: Stream[];
+  isGhost?: boolean;
 }
 
 interface SdpDiscoveredEvent {
@@ -143,14 +145,48 @@ function App() {
 
   useEffect(() => {
     const init = async () => {
+      // 1. Restore Interface Selection
       const ifaces = await refreshInterfaces();
       const savedIp = localStorage.getItem('selectedInterfaceIp');
       if (savedIp && ifaces.some(i => i.ip === savedIp)) {
         setActiveIp(savedIp);
       }
+
+      // 2. Load Ghost Cache
+      const cache = localStorage.getItem('sdp_ghost_cache');
+      if (cache) {
+        try {
+          const parsed = JSON.parse(cache) as Device[];
+          const ghosted = parsed.map(d => ({
+            ...d,
+            isGhost: true,
+            streams: d.streams.map(s => ({ ...s, isGhost: true }))
+          }));
+          setDevices(ghosted);
+        } catch (e) {
+          console.error("Ghost cache corrupted:", e);
+        }
+      }
     };
     init();
+
+    // 3. Auto-Cleanup STALE Ghost Data (120s)
+    const cleanupTimer = setTimeout(() => {
+      setDevices(prev => prev.filter(d => !d.isGhost));
+    }, 120000);
+
+    return () => clearTimeout(cleanupTimer);
   }, []);
+
+  // Ghost Cache Persistence Saving (Debounced 1s)
+  useEffect(() => {
+    if (devices.length > 0) {
+      const timer = setTimeout(() => {
+        localStorage.setItem('sdp_ghost_cache', JSON.stringify(devices));
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [devices]);
 
   // Global Sniffing Management
   const startGlobalSniffing = async (ifaces: InterfaceInfo[]) => {
@@ -191,6 +227,7 @@ function App() {
           device.mac = mac;
           device.manufacturer = manufacturer;
           device.sapTimeoutMs = sap_timeout_ms;
+          device.isGhost = false; // Transition to real
 
           const existingStreamIndex = device.streams.findIndex((s) => s.name === name);
 
@@ -203,6 +240,7 @@ function App() {
               mac,
               manufacturer,
               sapTimeoutMs: sap_timeout_ms,
+              isGhost: false, // Transition to real
             };
           } else {
             device.streams.push({
@@ -214,6 +252,7 @@ function App() {
               mac,
               manufacturer,
               sapTimeoutMs: sap_timeout_ms,
+              isGhost: false, // Transition to real
             });
           }
           newDevices[existingDeviceIndex] = device;
@@ -227,6 +266,7 @@ function App() {
               mac,
               manufacturer,
               sapTimeoutMs: sap_timeout_ms,
+              isGhost: false,
               streams: [
                 {
                   id: `${originIp}-${name}`,
@@ -237,6 +277,7 @@ function App() {
                   mac,
                   manufacturer,
                   sapTimeoutMs: sap_timeout_ms,
+                  isGhost: false,
                 },
               ],
             },

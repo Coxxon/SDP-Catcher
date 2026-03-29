@@ -121,8 +121,10 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     return "partial";
   };
 
-  const getStatusClasses = (status: string) => {
+  const getStatusClasses = (status: string, isGhost?: boolean) => {
     const base = "rounded-full aspect-square block";
+    if (isGhost) return `${base} bg-orange-500 shadow-[0_0_12px_rgba(249,115,22,0.4)] animate-pulse`;
+
     switch (status) {
       case "online":
         return `${base} bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.35)]`;
@@ -223,7 +225,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           [...filteredDevices].sort((a, b) => a.name.localeCompare(b.name)).map((device) => {
             const isExpanded = expandedDevices.includes(device.ip);
             const status = getDeviceStatus(device);
-            const statusClass = getStatusClasses(status);
+            const statusClass = getStatusClasses(status, device.isGhost);
 
             // Optimistic UI cache for immediate response without waiting for backend network packet sync
             if (!originalTimeouts.current[device.ip]) {
@@ -287,7 +289,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
 
                     {[...device.streams].sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
                       const streamStatus = getStreamStatus(stream);
-                      const streamStatusClass = getStatusClasses(streamStatus);
+                      const streamStatusClass = getStatusClasses(streamStatus, stream.isGhost);
 
                       return (
                         <button
