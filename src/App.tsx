@@ -587,10 +587,10 @@ function App() {
       <style>{`
         @keyframes damageFloat {
           0% { opacity: 0; transform: translate(-50%, 0) scale(0.5); }
-          15% { opacity: 1; transform: translate(-50%, -24px) scale(1.1); }
-          30% { transform: translate(-50%, -32px) scale(1); }
-          80% { opacity: 1; transform: translate(-50%, -48px) scale(1); }
-          100% { opacity: 0; transform: translate(-50%, -64px) scale(0.9); }
+          15% { opacity: 1; transform: translate(-50%, -6px) scale(1.1); }
+          30% { transform: translate(-50%, -8px) scale(1); }
+          80% { opacity: 1; transform: translate(-50%, -12px) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, -16px) scale(0.9); }
         }
         .animate-damage {
           animation: damageFloat 1s ease-out forwards;
