@@ -412,6 +412,7 @@ function App() {
           selectedStreamId={selectedStream?.id || null}
           onClearOffline={clearOfflineStreams}
           isSniffing={isSniffing}
+          globalTimeout={unknownTimeout}
         />
         <SdpViewer
           sdp={selectedStream?.sdpContent || null}

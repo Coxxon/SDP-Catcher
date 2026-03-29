@@ -11,15 +11,17 @@ interface StreamTreeProps {
   selectedStreamId: string | null;
   onClearOffline?: () => void;
   isSniffing: boolean;
+  globalTimeout: number;
 }
 
-export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearOffline, isSniffing }: StreamTreeProps) {
+export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearOffline, isSniffing, globalTimeout }: StreamTreeProps) {
   const [expandedDevices, setExpandedDevices] = useState<string[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [useDefaultTimeout, setUseDefaultTimeout] = useState<Record<string, boolean>>({});
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const originalTimeouts = useRef<Record<string, number>>({});
 
   useEffect(() => {
     if (isSearchOpen && searchInputRef.current) {
@@ -222,6 +224,14 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
             const isExpanded = expandedDevices.includes(device.ip);
             const status = getDeviceStatus(device);
             const statusClass = getStatusClasses(status);
+            
+            // Optimistic UI cache for immediate response without waiting for backend network packet sync
+            if (!originalTimeouts.current[device.ip]) {
+              originalTimeouts.current[device.ip] = device.sapTimeoutMs / 1000;
+            }
+            const displayedTimeoutMs = useDefaultTimeout[device.ip]
+              ? globalTimeout
+              : originalTimeouts.current[device.ip];
 
             return (
               <div key={device.ip} className="border-b border-neutral-800/50">
@@ -263,19 +273,15 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                       </div>
                       <div 
                         onClick={() => handleTimeoutToggle(device.ip)}
-                        className="flex items-center justify-between group/sap h-4.5 cursor-pointer hover:bg-white/5 px-2 -mx-2 rounded transition-colors"
+                        className="flex items-center justify-between group/sap h-4.5 cursor-pointer transition-colors"
                         title="Click to toggle between strict OUI timeout and user-defined global timeout"
                       >
-                        <span className={`text-[0.5625rem] uppercase font-bold tracking-wider whitespace-nowrap transition-colors ${
-                          useDefaultTimeout[device.ip] ? 'text-orange-500' : 'text-neutral-500'
-                        }`}>
-                          SAP Timeout {useDefaultTimeout[device.ip] ? "(GLOBAL)" : "(OUI)"}
+                        <span className="text-[0.5625rem] text-neutral-500 uppercase font-bold tracking-wider whitespace-nowrap transition-colors">
+                          SAP Timeout {useDefaultTimeout[device.ip] ? "(DEFAULT)" : ""}
                         </span>
                         
-                        <span className={`text-[0.625rem] font-mono whitespace-nowrap transition-colors ${
-                          useDefaultTimeout[device.ip] ? 'text-orange-500 font-bold' : 'text-neutral-200'
-                        }`}>
-                          {device.sapTimeoutMs / 1000}s
+                        <span className="text-[0.625rem] text-neutral-200 font-mono whitespace-nowrap transition-colors">
+                          {displayedTimeoutMs}s
                         </span>
                       </div>
                     </div>
