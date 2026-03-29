@@ -74,6 +74,18 @@ function App() {
     selectedDomainRef.current = selectedDomain;
   }, [selectedDomain]);
 
+  const [ptpDomainDraft, setPtpDomainDraft] = useState(selectedDomain.toString());
+  const [sapTimeoutDraft, setSapTimeoutDraft] = useState(unknownTimeout.toString());
+
+  // Keep drafts in sync if underlying state changes (e.g. from init)
+  useEffect(() => {
+    setPtpDomainDraft(selectedDomain.toString());
+  }, [selectedDomain]);
+
+  useEffect(() => {
+    setSapTimeoutDraft(unknownTimeout.toString());
+  }, [unknownTimeout]);
+
   const parseSdp = (raw: string): { name: string; multicastIp: string; originIp: string; sessionInfo: string | null } => {
     const lines = raw.split(/\r?\n/);
     let name = "Unknown Stream";
@@ -404,13 +416,18 @@ function App() {
                 <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">PTP DOMAIN</span>
                 <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[2.25rem]">
                     <input 
-                        type="number" 
-                        min="0"
-                        max="127"
-                        value={selectedDomain}
-                        onChange={(e) => setSelectedDomain(parseInt(e.target.value) || 0)}
+                        type="text" 
+                        value={ptpDomainDraft}
+                        onChange={(e) => setPtpDomainDraft(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = Math.min(255, parseInt(ptpDomainDraft) || 0);
+                            setSelectedDomain(val);
+                            (e.target as HTMLInputElement).blur();
+                          }
+                        }}
                         className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none translate-y-[0.0625rem]"
-                        title="PTP Domain Number Filter"
+                        title="PTP Domain Number Filter (0-255, Enter to apply)"
                     />
                 </div>
             </div>
@@ -420,12 +437,18 @@ function App() {
                 <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">SAP TIMEOUT</span>
                 <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[2.25rem]">
                     <input 
-                        type="number" 
-                        min="60"
-                        max="300"
-                        value={unknownTimeout}
-                        onChange={(e) => handleTimeoutChange(e.target.value)}
+                        type="text" 
+                        value={sapTimeoutDraft}
+                        onChange={(e) => setSapTimeoutDraft(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            const val = Math.min(300, Math.max(60, parseInt(sapTimeoutDraft) || 60));
+                            handleTimeoutChange(val.toString());
+                            (e.target as HTMLInputElement).blur();
+                          }
+                        }}
                         className="w-5 bg-transparent text-[0.625rem] text-zinc-300 font-mono text-center focus:outline-none appearance-none translate-y-[0.0625rem]"
+                        title="SAP Timeout (60-300s, Enter to apply)"
                     />
                     <span className="text-[0.5625rem] text-zinc-600 font-bold ml-0.5">s</span>
                 </div>
