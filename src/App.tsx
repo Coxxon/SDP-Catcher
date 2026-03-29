@@ -56,12 +56,16 @@ function App() {
     let timeout: any;
     const handleShowToast = (e: Event) => {
       const customEvent = e as CustomEvent<{ x: number, y: number }>;
-      setCopyToast({ x: customEvent.detail.x, y: customEvent.detail.y, visible: true });
+      // Force a reset if clicking rapidly at the same spot
+      setCopyToast(null);
       
+      // Wait for a micro-tick to restart the CSS animation
+      setTimeout(() => {
+        setCopyToast({ x: customEvent.detail.x, y: customEvent.detail.y, visible: true });
+      }, 10);
+
       if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        setCopyToast(null);
-      }, 1000);
+      timeout = setTimeout(() => setCopyToast(null), 1000);
     };
 
     window.addEventListener('show-copy-toast', handleShowToast);
@@ -595,7 +599,7 @@ function App() {
       
       {copyToast && (
         <div 
-          key={`${copyToast.x}-${copyToast.y}-${Date.now()}`}
+          key={`${copyToast.x}-${copyToast.y}`}
           className="fixed z-9999 pointer-events-none"
           style={{ left: copyToast.x, top: copyToast.y }}
         >
