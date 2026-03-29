@@ -153,19 +153,23 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
           <button
             onClick={handleCopy}
             disabled={!sdp}
-            className="group relative flex items-center justify-center w-[4.6875rem] h-6 text-[0.625rem] font-bold uppercase tracking-wider
+            className="group relative w-[4.6875rem] h-6 text-[0.625rem] font-bold uppercase tracking-wider
                      bg-neutral-900 border border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-white transition-all
-                     disabled:opacity-20 disabled:cursor-not-allowed overflow-hidden"
+                     disabled:opacity-20 disabled:cursor-not-allowed overflow-hidden rounded-sm shadow-sm active:scale-95"
           >
-            {/* Default State: Text + Icon */}
-            <div className={`flex items-center gap-1.5 transition-all duration-300 ${copied ? 'opacity-0 scale-75' : 'opacity-100 scale-100'}`}>
-              <Copy size="0.75rem" />
+            {/* Default State: Text + Icon (Slides Up and Out) */}
+            <div className={`absolute inset-0 flex items-center justify-center gap-1.5 transition-all duration-200 ease-out ${
+              copied ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
+            }`}>
+              <Copy size="0.75rem" strokeWidth={2.5} />
               <span>COPY</span>
             </div>
             
-            {/* Success State: Centered Checkmark */}
-            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-300 ${copied ? 'opacity-100 scale-100' : 'opacity-0 scale-50 pointer-events-none'}`}>
-              <Check size="0.875rem" className="text-green-500" />
+            {/* Success State: Centered Checkmark (Slides Up and In) */}
+            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-200 ease-out ${
+              copied ? 'translate-y-0 opacity-100 scale-110' : 'translate-y-full opacity-0 scale-50'
+            }`}>
+              <Check size="0.9375rem" strokeWidth={3} className="text-green-500 drop-shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
             </div>
           </button>
           <button
