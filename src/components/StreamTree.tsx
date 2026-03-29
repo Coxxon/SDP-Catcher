@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp, Search, X, ArrowDownAZ, ArrowDown } from "lucide-react";
+import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp, Search, X, ArrowDownAZ } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Stream, Device } from "../App";
 
@@ -215,13 +215,12 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
             {sortBy === 'name' ? (
               <ArrowDownAZ size="0.875rem" />
             ) : (
-              <div className="relative flex items-center">
-                <ArrowDown size="0.875rem" />
-                <div className="flex flex-col items-center justify-between h-[12px] -ml-[2px] mt-[1px] leading-none">
-                  <span className="text-[7px] font-bold">I</span>
-                  <span className="text-[7px] font-bold">P</span>
-                </div>
-              </div>
+              <svg width="0.875rem" height="0.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide">
+                <path d="m3 16 4 4 4-4"/>
+                <path d="M7 20V4"/>
+                <path d="M17 4v6"/>
+                <path d="M15 20v-6h3a1.5 1.5 0 0 1 0 3h-3"/>
+              </svg>
             )}
           </button>
           <button
