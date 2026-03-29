@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp, Search, X } from "lucide-react";
 import { Stream, Device } from "../App";
 
 import { manufacturerLogos } from "./ManufacturerLogos";
@@ -14,14 +14,51 @@ interface StreamTreeProps {
 
 export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearOffline, isSniffing }: StreamTreeProps) {
   const [expandedDevices, setExpandedDevices] = useState<string[]>([]);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const isAllExpanded = devices.length > 0 && devices.every(d => expandedDevices.includes(d.ip));
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [isSearchOpen]);
+
+  const filteredDevices = devices.reduce((acc: Device[], device) => {
+    const q = searchQuery.toLowerCase();
+    
+    // Check if the device itself matches the query
+    const deviceMatch = 
+      device.name.toLowerCase().includes(q) ||
+      device.ip.toLowerCase().includes(q) ||
+      device.mac.toLowerCase().includes(q) ||
+      device.manufacturer.toLowerCase().includes(q);
+
+    if (deviceMatch) {
+      acc.push(device);
+      return acc;
+    }
+
+    // If the device doesn't match, check if any of its streams do
+    const matchingStreams = device.streams.filter(s => 
+      s.name.toLowerCase().includes(q) || 
+      s.multicastIp.toLowerCase().includes(q)
+    );
+
+    if (matchingStreams.length > 0) {
+      acc.push({ ...device, streams: matchingStreams });
+    }
+    
+    return acc;
+  }, []);
+
+  const isAllExpanded = filteredDevices.length > 0 && filteredDevices.every(d => expandedDevices.includes(d.ip));
 
   const toggleAll = () => {
     if (isAllExpanded) {
       setExpandedDevices([]);
     } else {
-      setExpandedDevices(devices.map(d => d.ip));
+      setExpandedDevices(filteredDevices.map(d => d.ip));
     }
   };
 
@@ -71,15 +108,58 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-[15.9375rem] min-w-[15.9375rem] max-w-[15.9375rem] shrink-0">
-      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3">
+      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3 relative overflow-hidden">
+        
+        {/* Animated Search Bar Overlay */}
+        <div 
+          className={`absolute inset-0 z-10 flex items-center px-3 bg-zinc-950 transition-all duration-300 ease-in-out origin-right ${
+            isSearchOpen ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0 pointer-events-none'
+          }`}
+        >
+          <Search size="0.875rem" className="text-neutral-500 shrink-0" />
+          <input 
+            ref={searchInputRef}
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setIsSearchOpen(false);
+                setSearchQuery('');
+              } else if (e.key === 'Enter' && !searchQuery) {
+                setIsSearchOpen(false);
+              }
+            }}
+            placeholder="Search streams..."
+            className="flex-1 bg-transparent px-2 text-xs text-neutral-200 focus:outline-none min-w-0 font-sans"
+          />
+          <button 
+            onClick={() => {
+              if (searchQuery) setSearchQuery('');
+              else setIsSearchOpen(false);
+            }}
+            className="p-1 rounded hover:bg-neutral-800 text-neutral-500 hover:text-neutral-200 transition-colors shrink-0"
+          >
+            <X size="0.875rem" />
+          </button>
+        </div>
+
+        {/* Normal Header Content */}
         <div className="flex items-center gap-2">
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
           <span className="text-neutral-500 font-bold px-1 py-0.5 text-xs">
-            {devices.reduce((acc, d) => acc + d.streams.length, 0)}
+            {filteredDevices.reduce((acc, d) => acc + d.streams.length, 0)}
           </span>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            title="Search streams"
+            className="p-1.5 rounded-md hover:bg-neutral-700 text-neutral-500 hover:text-neutral-200 transition-all font-sans"
+          >
+            <Search size="0.875rem" />
+          </button>
           <button
             onClick={toggleAll}
             title={isAllExpanded ? "Tout replier" : "Tout déplier"}
@@ -102,8 +182,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           <div className="p-4 text-center text-neutral-600 text-xs italic">
             Scanning for SAP...
           </div>
+        ) : filteredDevices.length === 0 ? (
+          <div className="p-4 flex flex-col items-center gap-2 text-center text-neutral-500 mt-4">
+            <Search size="1.25rem" className="opacity-50" />
+            <span className="text-xs italic">No results found</span>
+          </div>
         ) : (
-          [...devices].sort((a, b) => a.name.localeCompare(b.name)).map((device) => {
+          [...filteredDevices].sort((a, b) => a.name.localeCompare(b.name)).map((device) => {
             const isExpanded = expandedDevices.includes(device.ip);
             const status = getDeviceStatus(device);
             const statusClass = getStatusClasses(status);
