@@ -144,9 +144,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         {/* Animated Search Bar Overlay */}
         <div 
           ref={searchContainerRef}
-          className={`absolute inset-0 z-10 flex items-center px-3 bg-zinc-950 transition-transform duration-300 ease-in-out origin-right ${
-            isSearchOpen ? 'scale-x-100' : 'scale-x-0 pointer-events-none'
+          className={`absolute inset-0 z-10 flex items-center px-3 bg-zinc-950 ${
+            !isSearchOpen ? 'pointer-events-none' : ''
           }`}
+          style={{ 
+            clipPath: isSearchOpen ? 'circle(150% at calc(100% - 40px) 50%)' : 'circle(0% at calc(100% - 40px) 50%)',
+            transition: 'clip-path 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
+          }}
         >
           <Search size="0.875rem" className="text-neutral-500 shrink-0" />
           <input 
