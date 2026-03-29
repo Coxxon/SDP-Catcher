@@ -393,7 +393,7 @@ function App() {
               className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer underline decoration-dotted decoration-neutral-600' : 'text-neutral-600 italic cursor-not-allowed'}`}
               title={isPtpActive ? `Mode: ${footerDisplayMode.toUpperCase()} | Click to cycle (Name/IP/MAC)` : "PTP Clock Offline"}
             >
-              {isPtpActive ? getFooterGmcText() : (activeIp ? `No PTP data on ${activeIp.split('/')[0]}` : "Select Interface")}
+              {isPtpActive ? getFooterGmcText() : (activeIp ? "No PTP data for this PTP Domain" : "Select Interface")}
             </span>
           </div>
         </div>
@@ -417,7 +417,7 @@ function App() {
 
             {/* SAP Timeout Control */}
             <div className="flex items-center gap-2">
-                <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">DEFAULT SAP TIMEOUT</span>
+                <span className="text-[0.5625rem] text-zinc-600 font-bold uppercase tracking-wider">SAP TIMEOUT</span>
                 <div className="flex items-center justify-center bg-zinc-900 border border-zinc-800 rounded px-1.5 h-4.5 min-w-[2.25rem]">
                     <input 
                         type="number" 
