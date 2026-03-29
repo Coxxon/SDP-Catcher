@@ -335,22 +335,10 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
           
-          <div className="relative group/status flex items-center justify-center">
-            <span className="relative z-10 text-neutral-500 font-bold text-xs px-1">
+          <div className="relative group/status flex items-center gap-1 ml-1.5 focus:outline-none">
+            <div className={`w-2 h-2 shrink-0 translate-y-[1px] ${getStatusClasses(globalStatus)}`} />
+            <span className="text-neutral-500 font-bold text-[10px] tabular-nums tracking-tighter">
               {sortedDevices.reduce((acc, d) => acc + d.streams.length, 0)}
-              
-              {/* Status Badge LED (Top-Left) */}
-              <div className="absolute -top-1 -left-1 flex items-center justify-center">
-                <div className={`w-2 h-2 rounded-full ${
-                  globalStatus === 'online' ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]' : 
-                  globalStatus === 'standby' ? 'bg-orange-500 shadow-[0_0_4px_rgba(249,115,22,0.4)]' : 
-                  'bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.4)]'
-                }`} />
-                <div className={`absolute inset-[-4px] -z-10 blur-[4px] opacity-40 rounded-full ${
-                  globalStatus === 'online' ? 'bg-green-500' : 
-                  globalStatus === 'standby' ? 'bg-orange-500' : 'bg-red-500'
-                }`} />
-              </div>
             </span>
             
             {/* Diagnostic Tooltip */}
