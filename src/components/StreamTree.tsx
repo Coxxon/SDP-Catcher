@@ -335,12 +335,20 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
           
-          <div className="relative group/status flex items-center justify-center min-w-[1.25rem] h-5">
-            <div className={`absolute inset-[-4px] z-0 blur-[8px] opacity-60 rounded-full ${
+          <div className="relative group/status flex items-center justify-center min-w-[1.25rem] h-[1.125rem]">
+            {/* Subtler Bloom (Halo) */}
+            <div className={`absolute inset-[-2px] z-0 blur-[6px] opacity-40 rounded-full ${
               globalStatus === 'online' ? 'bg-green-500' : 
               globalStatus === 'standby' ? 'bg-orange-500' : 'bg-red-500'
             }`} />
-            <span className="relative z-10 text-white font-bold px-1 py-0.5 text-xs drop-shadow-[0_0_8px_rgba(0,0,0,0.5)]">
+            
+            {/* Solid LED Body */}
+            <div className={`absolute inset-0 z-0 rounded-full ${
+              globalStatus === 'online' ? 'bg-green-600' : 
+              globalStatus === 'standby' ? 'bg-orange-600' : 'bg-red-600'
+            } border border-white/10`} />
+
+            <span className="relative z-10 text-white font-bold px-1.5 py-0.5 text-[10px] leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">
               {sortedDevices.reduce((acc, d) => acc + d.streams.length, 0)}
             </span>
             
