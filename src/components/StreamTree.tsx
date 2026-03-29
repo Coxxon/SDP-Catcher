@@ -335,25 +335,26 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
           
-          <div className="relative group/status flex items-center justify-center min-w-[1.25rem] h-[1.125rem]">
-            {/* Subtler Bloom (Halo) */}
-            <div className={`absolute inset-[-2px] z-0 blur-[6px] opacity-40 rounded-full ${
-              globalStatus === 'online' ? 'bg-green-500' : 
-              globalStatus === 'standby' ? 'bg-orange-500' : 'bg-red-500'
-            }`} />
-            
-            {/* Solid LED Body */}
-            <div className={`absolute inset-0 z-0 rounded-full ${
-              globalStatus === 'online' ? 'bg-green-600' : 
-              globalStatus === 'standby' ? 'bg-orange-600' : 'bg-red-600'
-            } border border-white/10`} />
-
-            <span className="relative z-10 text-white font-bold px-1.5 py-0.5 text-[10px] leading-none drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">
+          <div className="relative group/status flex items-center justify-center">
+            <span className="relative z-10 text-neutral-500 font-bold text-xs px-1">
               {sortedDevices.reduce((acc, d) => acc + d.streams.length, 0)}
+              
+              {/* Status Badge LED (Top-Left) */}
+              <div className="absolute -top-1 -left-1 flex items-center justify-center">
+                <div className={`w-2 h-2 rounded-full ${
+                  globalStatus === 'online' ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.4)]' : 
+                  globalStatus === 'standby' ? 'bg-orange-500 shadow-[0_0_4px_rgba(249,115,22,0.4)]' : 
+                  'bg-red-500 shadow-[0_0_4px_rgba(239,68,68,0.4)]'
+                }`} />
+                <div className={`absolute inset-[-4px] -z-10 blur-[4px] opacity-40 rounded-full ${
+                  globalStatus === 'online' ? 'bg-green-500' : 
+                  globalStatus === 'standby' ? 'bg-orange-500' : 'bg-red-500'
+                }`} />
+              </div>
             </span>
             
             {/* Diagnostic Tooltip */}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-32 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl py-2 px-3 z-[100] opacity-0 group-hover/status:opacity-100 pointer-events-none transition-opacity duration-200">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-32 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl py-2 px-3 z-[100] opacity-0 group-hover/status:opacity-100 pointer-events-none transition-opacity duration-200">
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <span className="w-2 h-2 rounded-full bg-green-500" />
