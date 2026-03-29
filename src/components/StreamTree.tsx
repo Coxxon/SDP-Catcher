@@ -371,7 +371,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           setIsFocusVisible(false);
           if (focusTimer.current) clearTimeout(focusTimer.current);
         }}
-        className="flex-1 overflow-y-auto p-0 space-y-0"
+        className="flex-1 overflow-y-scroll p-0 space-y-0"
       >
         {devices.length === 0 ? (
           <div className="p-4 text-center text-neutral-600 text-xs italic">
