@@ -582,11 +582,19 @@ function App() {
 
       {copyToast && (
         <div 
-          className={`fixed z-9999 pointer-events-none flex items-center gap-1.5 px-2.5 py-1 bg-zinc-800 text-white rounded-md shadow-2xl border border-white/10 transition-all duration-300 ${copyToast.visible ? 'opacity-100 -translate-y-4' : 'opacity-0 -translate-y-8'}`}
-          style={{ left: copyToast.x, top: copyToast.y, transform: 'translate(-50%, -100%)' }}
+          className="fixed z-9999 pointer-events-none"
+          style={{ left: copyToast.x, top: copyToast.y }}
         >
-          <Check size="12" className="text-green-400" />
-          <span className="text-[10px] font-bold tracking-wider uppercase">Copied</span>
+          <div 
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-800 text-white rounded-md shadow-xl border border-white/10 transition-[opacity,transform] ease-out origin-bottom ${
+              copyToast.visible 
+                ? 'opacity-100 duration-200 translate-x-[-50%] translate-y-[calc(-100%-12px)] scale-100' 
+                : 'opacity-0 duration-150 translate-x-[-50%] -translate-y-full scale-75'
+            }`}
+          >
+            <Check size="12" className="text-green-400" />
+            <span className="text-[10px] font-bold tracking-wide uppercase">Copied</span>
+          </div>
         </div>
       )}
     </main>
