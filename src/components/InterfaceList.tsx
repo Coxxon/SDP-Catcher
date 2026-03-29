@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Network, Settings, RefreshCw, X, Check, Pencil } from "lucide-react";
 import { Device, InterfaceInfo } from "../App";
+import { GhostScroll } from "./GhostScroll";
 
 interface InterfaceListProps {
   activeIp: string | null;
@@ -200,182 +201,184 @@ export function InterfaceList({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        {interfaces.length === 0 ? (
-          <div className="p-3 text-neutral-600 text-[0.6875rem] italic">
-            Scanning...
-          </div>
-        ) : (
-          interfaces
-            .filter((iface) => isEditMode || !hiddenInterfaces.includes(iface.ip))
-            .map((iface) => {
-              const isActive = activeIp === iface.ip;
-              const isHidden = hiddenInterfaces.includes(iface.ip);
-              const isEditing = editingIp === iface.ip;
-              const cidr = maskToCidr(iface.mask);
-              const streamCount = getStreamCount(iface);
-              
-              if (isEditing) {
-                  return (
-                    <div key={iface.ip} 
-                         onClick={(e) => e.stopPropagation()}
-                         className="p-3 bg-neutral-800 border-b border-neutral-700 space-y-3"
-                    >
-                        <div className="flex items-center justify-between mb-2">
-                             <span className="text-[0.625rem] font-bold text-neutral-500 uppercase tracking-widest">{iface.name}</span>
-                             <div className="flex gap-2">
-                                 <button 
-                                     onClick={async (e) => { 
-                                         e.stopPropagation(); 
-                                         setEditingIp(null);
-                                         onStartSniffing(interfaces);
-                                     }} 
-                                     className="text-neutral-500 hover:text-white"
-                                 >
-                                     <X size="0.875rem" />
-                                 </button>
-                             </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-3 bg-neutral-900 p-1 rounded-md mb-2">
-                            <button 
-                                onClick={() => setEditForm({...editForm, isDhcp: true})}
-                                className={`flex-1 py-1 text-[0.625rem] font-bold rounded ${editForm.isDhcp ? 'bg-neutral-700 text-white' : 'text-neutral-600 hover:text-neutral-400'}`}
-                            >DHCP</button>
-                            <button 
-                                onClick={() => setEditForm({...editForm, isDhcp: false})}
-                                className={`flex-1 py-1 text-[0.625rem] font-bold rounded ${!editForm.isDhcp ? 'bg-neutral-700 text-white' : 'text-neutral-600 hover:text-neutral-400'}`}
-                            >STATIC</button>
-                        </div>
+      <GhostScroll className="flex-1 overflow-hidden">
+        <div className={isCollapsed ? "min-w-[4rem]" : "min-w-[15.875rem]"}>
+          {interfaces.length === 0 ? (
+            <div className="p-3 text-neutral-600 text-[0.6875rem] italic">
+              Scanning...
+            </div>
+          ) : (
+            interfaces
+              .filter((iface) => isEditMode || !hiddenInterfaces.includes(iface.ip))
+              .map((iface) => {
+                const isActive = activeIp === iface.ip;
+                const isHidden = hiddenInterfaces.includes(iface.ip);
+                const isEditing = editingIp === iface.ip;
+                const cidr = maskToCidr(iface.mask);
+                const streamCount = getStreamCount(iface);
+                
+                if (isEditing) {
+                    return (
+                      <div key={iface.ip} 
+                           onClick={(e) => e.stopPropagation()}
+                           className="p-3 bg-neutral-800 border-b border-neutral-700 space-y-3"
+                      >
+                          <div className="flex items-center justify-between mb-2">
+                               <span className="text-[0.625rem] font-bold text-neutral-500 uppercase tracking-widest">{iface.name}</span>
+                               <div className="flex gap-2">
+                                   <button 
+                                       onClick={async (e) => { 
+                                           e.stopPropagation(); 
+                                           setEditingIp(null);
+                                           onStartSniffing(interfaces);
+                                       }} 
+                                       className="text-neutral-500 hover:text-white"
+                                   >
+                                       <X size="0.875rem" />
+                                   </button>
+                               </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-3 bg-neutral-900 p-1 rounded-md mb-2">
+                              <button 
+                                  onClick={() => setEditForm({...editForm, isDhcp: true})}
+                                  className={`flex-1 py-1 text-[0.625rem] font-bold rounded ${editForm.isDhcp ? 'bg-neutral-700 text-white' : 'text-neutral-600 hover:text-neutral-400'}`}
+                              >DHCP</button>
+                              <button 
+                                  onClick={() => setEditForm({...editForm, isDhcp: false})}
+                                  className={`flex-1 py-1 text-[0.625rem] font-bold rounded ${!editForm.isDhcp ? 'bg-neutral-700 text-white' : 'text-neutral-600 hover:text-neutral-400'}`}
+                              >STATIC</button>
+                          </div>
 
-                        {!editForm.isDhcp && (
-                            <div className="space-y-2">
-                                <div className="space-y-1">
-                                    <label className="text-[0.5625rem] text-neutral-500 uppercase font-bold pl-1">IP Address</label>
-                                    <input 
-                                        type="text" 
-                                        value={editForm.ip}
-                                        onChange={e => {
-                                            const formatted = formatIpInput(e.target.value, editForm.ip);
-                                            setEditForm({...editForm, ip: formatted});
-                                            if (fieldErrors.ip) setFieldErrors({...fieldErrors, ip: false});
-                                        }}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                handleApply(iface);
-                                            }
-                                        }}
-                                        placeholder="0.0.0.0"
-                                        className={`w-full bg-neutral-900 border ${fieldErrors.ip ? 'border-red-500' : 'border-neutral-700'} rounded px-2 py-1 text-xs text-neutral-200 font-mono focus:outline-none focus:border-blue-500/50`}
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-[0.5625rem] text-neutral-500 uppercase font-bold pl-1">Subnet Mask</label>
-                                    <input 
-                                        type="text" 
-                                        value={editForm.mask}
-                                        onChange={e => {
-                                            const formatted = formatIpInput(e.target.value, editForm.mask);
-                                            setEditForm({...editForm, mask: formatted});
-                                            if (fieldErrors.mask) setFieldErrors({...fieldErrors, mask: false});
-                                        }}
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                handleApply(iface);
-                                            }
-                                        }}
-                                        placeholder="255.255.255.0"
-                                        className={`w-full bg-neutral-900 border ${fieldErrors.mask ? 'border-red-500' : 'border-neutral-700'} rounded px-2 py-1 text-xs text-neutral-200 font-mono focus:outline-none focus:border-blue-500/50`}
-                                    />
-                                </div>
-                            </div>
-                        )}
+                          {!editForm.isDhcp && (
+                              <div className="space-y-2">
+                                  <div className="space-y-1">
+                                      <label className="text-[0.5625rem] text-neutral-500 uppercase font-bold pl-1">IP Address</label>
+                                      <input 
+                                          type="text" 
+                                          value={editForm.ip}
+                                          onChange={e => {
+                                              const formatted = formatIpInput(e.target.value, editForm.ip);
+                                              setEditForm({...editForm, ip: formatted});
+                                              if (fieldErrors.ip) setFieldErrors({...fieldErrors, ip: false});
+                                          }}
+                                          onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  handleApply(iface);
+                                              }
+                                          }}
+                                          placeholder="0.0.0.0"
+                                          className={`w-full bg-neutral-900 border ${fieldErrors.ip ? 'border-red-500' : 'border-neutral-700'} rounded px-2 py-1 text-xs text-neutral-200 font-mono focus:outline-none focus:border-blue-500/50`}
+                                      />
+                                  </div>
+                                  <div className="space-y-1">
+                                      <label className="text-[0.5625rem] text-neutral-500 uppercase font-bold pl-1">Subnet Mask</label>
+                                      <input 
+                                          type="text" 
+                                          value={editForm.mask}
+                                          onChange={e => {
+                                              const formatted = formatIpInput(e.target.value, editForm.mask);
+                                              setEditForm({...editForm, mask: formatted});
+                                              if (fieldErrors.mask) setFieldErrors({...fieldErrors, mask: false});
+                                          }}
+                                          onKeyDown={(e) => {
+                                              if (e.key === 'Enter') {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  handleApply(iface);
+                                              }
+                                          }}
+                                          placeholder="255.255.255.0"
+                                          className={`w-full bg-neutral-900 border ${fieldErrors.mask ? 'border-red-500' : 'border-neutral-700'} rounded px-2 py-1 text-xs text-neutral-200 font-mono focus:outline-none focus:border-blue-500/50`}
+                                      />
+                                  </div>
+                              </div>
+                          )}
 
-                        <button 
-                            disabled={isPending}
-                            onClick={(e) => { e.stopPropagation(); handleApply(iface); }}
-                            className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[0.625rem] font-bold rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-                        >
-                            {isPending ? <RefreshCw size="0.75rem" className="animate-spin" /> : <Check size="0.75rem" />}
-                            APPLY CHANGES
-                        </button>
-                    </div>
-                  );
-              }
+                          <button 
+                              disabled={isPending}
+                              onClick={(e) => { e.stopPropagation(); handleApply(iface); }}
+                              className="w-full py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-[0.625rem] font-bold rounded transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                          >
+                              {isPending ? <RefreshCw size="0.75rem" className="animate-spin" /> : <Check size="0.75rem" />}
+                              APPLY CHANGES
+                          </button>
+                      </div>
+                    );
+                }
 
-              return (
-                <button
-                  key={iface.ip}
-                  onClick={() => handleClick(iface.ip)}
-                  className={`w-full ${isCollapsed ? 'text-center' : 'text-left'} px-3 py-2 transition-all border-b group relative flex flex-col gap-0.5 overflow-hidden ${
-                    isActive
-                      ? "bg-neutral-800 text-white border-neutral-700"
-                      : "text-neutral-400 hover:bg-neutral-800/40 border-neutral-800/50"
-                  } ${isHidden ? "opacity-30" : "opacity-100"} select-none`}
-                  title={isCollapsed ? `${iface.name}\n${iface.ip}/${cidr}` : undefined}
-                >
-                  {isCollapsed ? (
-                    <div className="flex flex-col items-center justify-center py-1 w-full">
-                        <span className={`text-[0.625rem] font-bold text-center tracking-wider px-1 truncate w-full ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
-                          {iface.name.substring(0, 3).toUpperCase()}
-                        </span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <span 
-                              onContextMenu={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                navigator.clipboard.writeText(iface.name);
-                                window.dispatchEvent(new CustomEvent('show-copy-toast', { 
-                                  detail: { x: e.clientX, y: e.clientY } 
-                                }));
-                              }}
-                              className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}
-                            >
-                              {iface.name}
-                            </span>
+                return (
+                  <button
+                    key={iface.ip}
+                    onClick={() => handleClick(iface.ip)}
+                    className={`w-full ${isCollapsed ? 'text-center' : 'text-left'} px-3 py-2 transition-all border-b group relative flex flex-col gap-0.5 overflow-hidden ${
+                      isActive
+                        ? "bg-neutral-800 text-white border-neutral-700"
+                        : "text-neutral-400 hover:bg-neutral-800/40 border-neutral-800/50"
+                    } ${isHidden ? "opacity-30" : "opacity-100"} select-none`}
+                    title={isCollapsed ? `${iface.name}\n${iface.ip}/${cidr}` : undefined}
+                  >
+                    {isCollapsed ? (
+                      <div className="flex flex-col items-center justify-center py-1 w-full">
+                          <span className={`text-[0.625rem] font-bold text-center tracking-wider px-1 truncate w-full ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}>
+                            {iface.name.substring(0, 3).toUpperCase()}
+                          </span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                              <span 
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(iface.name);
+                                  window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+                                    detail: { x: e.clientX, y: e.clientY } 
+                                  }));
+                                }}
+                                className={`text-sm font-medium truncate tracking-tight ${isActive ? 'text-white' : 'text-zinc-200'} ${isHidden ? 'line-through' : ''}`}
+                              >
+                                {iface.name}
+                              </span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {!isEditMode && (
+                              <div 
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  handleDoubleClick(iface); 
+                                }}
+                                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-neutral-600 text-neutral-400 hover:text-white transition-all cursor-pointer shrink-0"
+                              >
+                                <Pencil size="0.75rem" />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          {!isEditMode && (
-                            <div 
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                handleDoubleClick(iface); 
-                              }}
-                              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-neutral-600 text-neutral-400 hover:text-white transition-all cursor-pointer shrink-0"
-                            >
-                              <Pencil size="0.75rem" />
-                            </div>
+                        <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
+                          <span 
+                            onContextMenu={(e) => handleIPInteraction(e, iface.ip, iface.ip)}
+                            className="truncate"
+                          >
+                            {iface.ip} <span>/{cidr}</span>
+                          </span>
+                          {streamCount > 0 && (
+                              <span className="pr-1 shrink-0">
+                                  {streamCount} {streamCount === 1 ? 'stream' : 'streams'}
+                              </span>
                           )}
                         </div>
-                      </div>
-                      <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
-                        <span 
-                          onContextMenu={(e) => handleIPInteraction(e, iface.ip, iface.ip)}
-                          className="truncate"
-                        >
-                          {iface.ip} <span>/{cidr}</span>
-                        </span>
-                        {streamCount > 0 && (
-                            <span className="pr-1 shrink-0">
-                                {streamCount} {streamCount === 1 ? 'stream' : 'streams'}
-                            </span>
-                        )}
-                      </div>
-                    </>
-                  )}
-                </button>
-              );
-            })
-        )}
-      </div>
+                      </>
+                    )}
+                  </button>
+                );
+              })
+          )}
+        </div>
+      </GhostScroll>
     </div>
   );
 }

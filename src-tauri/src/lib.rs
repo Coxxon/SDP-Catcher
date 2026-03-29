@@ -583,7 +583,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(AppState {
             sniffer_stop_flag: Mutex::new(None),
             default_unknown_timeout_s: Mutex::new(60),
@@ -603,6 +602,19 @@ pub fn run() {
         .setup(|app| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_theme(Some(tauri::Theme::Dark));
+                // Enforce minimum size — must also call set_size to correct any
+                // previously saved state that was smaller than the minimum.
+                let min_w = 800.0_f64;
+                let min_h = 600.0_f64;
+                let _ = window.set_min_size(Some(tauri::LogicalSize::new(min_w, min_h)));
+                if let (Ok(size), Ok(scale)) = (window.inner_size(), window.scale_factor()) {
+                    let logical = size.to_logical::<f64>(scale);
+                    let new_w = logical.width.max(min_w);
+                    let new_h = logical.height.max(min_h);
+                    if new_w != logical.width || new_h != logical.height {
+                        let _ = window.set_size(tauri::LogicalSize::new(new_w, new_h));
+                    }
+                }
             }
             Ok(())
         })

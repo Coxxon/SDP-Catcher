@@ -1,0 +1,21 @@
+/* Hide ALL native scrollbars globally (webkit/WebView2).
+   This file is imported via ?raw in main.tsx to bypass
+   Tailwind CSS v4 PostCSS which strips ::-webkit-scrollbar rules. */
+
+/* Global hide — every native scrollbar in the app */
+* {
+  scrollbar-width: none;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Also target the webkit scrollbar on ghost-scroll content specifically */
+.ghost-scroll-content::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

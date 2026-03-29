@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { Rss, ChevronRight, HardDrive, Trash2, ChevronsUpDown, ChevronsDownUp, Search, X, ArrowDownAZ } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
 import { Stream, Device } from "../App";
-
+import { GhostScroll } from "./GhostScroll";
 import { manufacturerLogos } from "./ManufacturerLogos";
 
 interface StreamTreeProps {
@@ -296,8 +296,8 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   const globalStatus = totalStreams === 0 ? 'none' : (stats.offline > 0 ? 'offline' : (stats.standby > 0 ? 'standby' : 'online'));
 
   return (
-    <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-[15.9375rem] min-w-[15.9375rem] max-w-[15.9375rem] shrink-0">
-      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3 relative">
+    <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-[15.9375rem] min-w-[15.9375rem] max-w-[15.9375rem] shrink-0 overflow-hidden">
+      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3 relative shrink-0">
 
         {/* Animated Search Bar Overlay */}
         <div
@@ -412,176 +412,182 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         </div>
       </div>
 
+      <GhostScroll
+        className="flex-1 overflow-hidden"
+      >
       <div
         onMouseLeave={() => {
           setIsFocusVisible(false);
           if (focusTimer.current) clearTimeout(focusTimer.current);
         }}
-        className="flex-1 overflow-y-scroll p-0 space-y-0"
+        className="p-0 space-y-0 text-left"
       >
-        {devices.length === 0 ? (
-          <div className="p-4 text-center text-neutral-600 text-xs italic">
-            Scanning for SAP...
-          </div>
-        ) : sortedDevices.length === 0 ? (
-          <div className="p-4 flex flex-col items-center gap-2 text-center text-neutral-500 mt-4">
-            <Search size="1.25rem" className="opacity-50" />
-            <span className="text-xs italic">No results found</span>
-          </div>
-        ) : (
-          sortedDevices.map((device) => {
-            const isExpanded = expandedDevices.includes(device.ip);
-            const isFocused = focusedId === device.ip;
-            const isVisible = isFocused && isFocusVisible;
-            const status = getDeviceStatus(device);
-            const statusClass = getStatusClasses(status, device.isGhost);
+        <div className="min-w-[15.875rem]"> {/* Fixed inner width to prevent layout shift */}
+          {devices.length === 0 ? (
+            <div className="p-4 text-center text-neutral-600 text-xs italic">
+              Scanning for SAP...
+            </div>
+          ) : sortedDevices.length === 0 ? (
+            <div className="p-4 flex flex-col items-center gap-2 text-center text-neutral-500 mt-4">
+              <Search size="1.25rem" className="opacity-50" />
+              <span className="text-xs italic">No results found</span>
+            </div>
+          ) : (
+            sortedDevices.map((device) => {
+              const isExpanded = expandedDevices.includes(device.ip);
+              const isFocused = focusedId === device.ip;
+              const isVisible = isFocused && isFocusVisible;
+              const status = getDeviceStatus(device);
+              const statusClass = getStatusClasses(status, device.isGhost);
 
-            // Optimistic UI cache for immediate response without waiting for backend network packet sync
-            if (!originalTimeouts.current[device.ip]) {
-              originalTimeouts.current[device.ip] = device.sapTimeoutMs / 1000;
-            }
-            const displayedTimeoutMs = useDefaultTimeout[device.ip]
-              ? globalTimeout
-              : originalTimeouts.current[device.ip];
+              // Optimistic UI cache for immediate response without waiting for backend network packet sync
+              if (!originalTimeouts.current[device.ip]) {
+                originalTimeouts.current[device.ip] = device.sapTimeoutMs / 1000;
+              }
+              const displayedTimeoutMs = useDefaultTimeout[device.ip]
+                ? globalTimeout
+                : originalTimeouts.current[device.ip];
 
-            return (
-              <div key={device.ip} className="border-b border-neutral-800/50">
-                <button
-                  onClick={() => toggleDevice(device.ip)}
-                  onMouseEnter={() => {
-                    setFocusedId(device.ip);
-                    setIsFocusVisible(true);
-                    if (focusTimer.current) clearTimeout(focusTimer.current);
-                  }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 transition-all duration-500 group relative focus:outline-none ${isVisible ? 'bg-neutral-800/80' : 'bg-neutral-950 hover:bg-neutral-900/60'
-                    }`}
-                >
-                  <div className={`absolute top-0 -bottom-px -left-px w-[3px] bg-zinc-400 z-20 transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                    }`} />
-                  <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
-                    <ChevronRight size="0.875rem" className={isVisible ? "text-neutral-300" : "text-neutral-600"} />
-                  </div>
-                  <div className="relative pointer-events-none">
-                    <HardDrive size="0.875rem" className={`transition-colors ${isVisible ? "text-neutral-200" : "text-neutral-500 group-hover:text-neutral-300"}`} />
-                    <div className={`absolute -top-0.5 -right-1 w-1.5 h-1.5 ${statusClass}`} />
-                  </div>
-
-                  <div className="relative z-10 flex flex-col items-start leading-none min-w-0 text-left">
-                    <span
-                      onContextMenu={(e) => handleIPInteraction(e, device.name, device.ip)}
-                      className={`text-[0.6875rem] font-bold truncate w-full tracking-tight pb-0.5 transition-colors ${isVisible ? 'text-white' : 'text-neutral-200'
-                        }`}
-                    >
-                      {device.name}
-                    </span>
-                    <span
-                      onContextMenu={(e) => handleIPInteraction(e, device.ip, device.ip)}
-                      className={`text-xs font-mono mt-0.5 transition-colors ${isVisible ? 'text-zinc-400' : 'text-zinc-500'
-                        }`}
-                    >
-                      {device.ip}
-                    </span>
-                  </div>
-
-                  {/* Background Ghost Logo */}
-                  {manufacturerLogos[device.manufacturer.split(' (')[0]] && (
-                    <div className={`absolute top-0 right-0 h-full w-24 opacity-[0.40] pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden transition-colors ${isVisible ? 'text-neutral-500' : 'text-neutral-600'
-                      }`}>
-                      {manufacturerLogos[device.manufacturer.split(' (')[0]]}
+              return (
+                <div key={device.ip} className="border-b border-neutral-800/50">
+                  <button
+                    onClick={() => toggleDevice(device.ip)}
+                    onMouseEnter={() => {
+                      setFocusedId(device.ip);
+                      setIsFocusVisible(true);
+                      if (focusTimer.current) clearTimeout(focusTimer.current);
+                    }}
+                    className={`w-full flex items-center gap-2 px-3 py-2 transition-all duration-500 group relative focus:outline-none ${isVisible ? 'bg-neutral-800/80' : 'bg-neutral-950 hover:bg-neutral-900/60'
+                      }`}
+                  >
+                    <div className={`absolute top-0 -bottom-px -left-px w-[3px] bg-zinc-400 z-20 transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                      }`} />
+                    <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
+                      <ChevronRight size="0.875rem" className={isVisible ? "text-neutral-300" : "text-neutral-600"} />
                     </div>
-                  )}
-                </button>
+                    <div className="relative pointer-events-none">
+                      <HardDrive size="0.875rem" className={`transition-colors ${isVisible ? "text-neutral-200" : "text-neutral-500 group-hover:text-neutral-300"}`} />
+                      <div className={`absolute -top-0.5 -right-1 w-1.5 h-1.5 ${statusClass}`} />
+                    </div>
 
-                {isExpanded && (
-                  <div className="space-y-0 bg-black/10">
-                    {/* Device Meta Info */}
-                    <div className="px-8 py-2 bg-black/20 border-y border-white/5 shadow-inner flex flex-col gap-0.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[0.5625rem] text-neutral-500 uppercase font-bold tracking-wider whitespace-nowrap">Manufacturer</span>
-                        <span className={`text-[0.625rem] whitespace-nowrap ${device.manufacturer === 'Unknown' ? 'text-neutral-600 italic' : 'text-neutral-200 font-bold'}`}>
-                          {device.manufacturer.split(' (')[0]}
-                          {device.manufacturer === 'Unknown' && ' (fallback)'}
-                        </span>
-                      </div>
-                      <div
-                        onClick={() => handleTimeoutToggle(device.ip)}
-                        className="flex items-center justify-between group/sap h-4.5 cursor-pointer transition-colors"
+                    <div className="relative z-10 flex flex-col items-start leading-none min-w-0 text-left">
+                      <span
+                        onContextMenu={(e) => handleIPInteraction(e, device.name, device.ip)}
+                        className={`text-[0.6875rem] font-bold truncate w-full tracking-tight pb-0.5 transition-colors ${isVisible ? 'text-white' : 'text-neutral-200'
+                          }`}
                       >
-                        <span className="text-[0.5625rem] text-neutral-500 uppercase font-bold tracking-wider whitespace-nowrap transition-colors">
-                          SAP Timeout {useDefaultTimeout[device.ip] ? "(DEFAULT)" : ""}
-                        </span>
-
-                        <span className="text-[0.625rem] text-neutral-200 font-mono whitespace-nowrap transition-colors">
-                          {displayedTimeoutMs}s
-                        </span>
-                      </div>
+                        {device.name}
+                      </span>
+                      <span
+                        onContextMenu={(e) => handleIPInteraction(e, device.ip, device.ip)}
+                        className={`text-xs font-mono mt-0.5 transition-colors ${isVisible ? 'text-zinc-400' : 'text-zinc-500'
+                          }`}
+                      >
+                        {device.ip}
+                      </span>
                     </div>
 
-                    {[...device.streams].sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
-                      const streamStatus = getStreamStatus(stream);
-                      const streamStatusClass = getStatusClasses(streamStatus, stream.isGhost);
-                      const isStreamFocused = focusedId === stream.id;
-                      const isStreamVisible = isStreamFocused && isFocusVisible;
+                    {/* Background Ghost Logo */}
+                    {manufacturerLogos[device.manufacturer.split(' (')[0]] && (
+                      <div className={`absolute top-0 right-0 h-full w-24 opacity-[0.40] pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden transition-colors ${isVisible ? 'text-neutral-500' : 'text-neutral-600'
+                        }`}>
+                        {manufacturerLogos[device.manufacturer.split(' (')[0]]}
+                      </div>
+                    )}
+                  </button>
 
-                      return (
-                        <button
-                          key={stream.id}
-                          onClick={() => handleStreamClick(stream)}
-                          onMouseEnter={() => {
-                            setFocusedId(stream.id);
-                            setIsFocusVisible(true);
-                            if (focusTimer.current) clearTimeout(focusTimer.current);
-                          }}
-                          className={`w-full flex flex-col items-start py-2 pl-8 pr-3 text-[0.75rem] transition-all duration-500 border-b border-neutral-800/30 relative focus:outline-none ${selectedStreamId === stream.id
-                            ? "bg-neutral-800 text-white font-bold"
-                            : isStreamVisible
-                              ? "bg-neutral-800/40 text-white"
-                              : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
-                            }`}
+                  {isExpanded && (
+                    <div className="space-y-0 bg-black/10">
+                      {/* Device Meta Info */}
+                      <div className="px-8 py-2 bg-black/20 border-y border-white/5 shadow-inner flex flex-col gap-0.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[0.5625rem] text-neutral-500 uppercase font-bold tracking-wider whitespace-nowrap">Manufacturer</span>
+                          <span className={`text-[0.625rem] whitespace-nowrap ${device.manufacturer === 'Unknown' ? 'text-neutral-600 italic' : 'text-neutral-200 font-bold'}`}>
+                            {device.manufacturer.split(' (')[0]}
+                            {device.manufacturer === 'Unknown' && ' (fallback)'}
+                          </span>
+                        </div>
+                        <div
+                          onClick={() => handleTimeoutToggle(device.ip)}
+                          className="flex items-center justify-between group/sap h-4.5 cursor-pointer transition-colors"
                         >
-                          <div className={`absolute top-0 -bottom-px -left-px w-[3px] bg-zinc-400 z-20 transition-opacity duration-500 ${isStreamVisible && selectedStreamId !== stream.id ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                            }`} />
-                          <div className="flex items-center gap-2 w-full relative z-10">
-                            <div className={`w-1.5 h-1.5 ${streamStatusClass}`} />
+                          <span className="text-[0.5625rem] text-neutral-500 uppercase font-bold tracking-wider whitespace-nowrap transition-colors">
+                            SAP Timeout {useDefaultTimeout[device.ip] ? "(DEFAULT)" : ""}
+                          </span>
+
+                          <span className="text-[0.625rem] text-neutral-200 font-mono whitespace-nowrap transition-colors">
+                            {displayedTimeoutMs}s
+                          </span>
+                        </div>
+                      </div>
+
+                      {[...device.streams].sort((a, b) => a.name.localeCompare(b.name)).map((stream) => {
+                        const streamStatus = getStreamStatus(stream);
+                        const streamStatusClass = getStatusClasses(streamStatus, stream.isGhost);
+                        const isStreamFocused = focusedId === stream.id;
+                        const isStreamVisible = isStreamFocused && isFocusVisible;
+
+                        return (
+                          <button
+                            key={stream.id}
+                            onClick={() => handleStreamClick(stream)}
+                            onMouseEnter={() => {
+                              setFocusedId(stream.id);
+                              setIsFocusVisible(true);
+                              if (focusTimer.current) clearTimeout(focusTimer.current);
+                            }}
+                            className={`w-full flex flex-col items-start py-2 pl-8 pr-3 text-[0.75rem] transition-all duration-500 border-b border-neutral-800/30 relative focus:outline-none ${selectedStreamId === stream.id
+                              ? "bg-neutral-800 text-white font-bold"
+                              : isStreamVisible
+                                ? "bg-neutral-800/40 text-white"
+                                : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
+                              }`}
+                          >
+                            <div className={`absolute top-0 -bottom-px -left-px w-[3px] bg-zinc-400 z-20 transition-opacity duration-500 ${isStreamVisible && selectedStreamId !== stream.id ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                              }`} />
+                            <div className="flex items-center gap-2 w-full relative z-10">
+                              <div className={`w-1.5 h-1.5 ${streamStatusClass}`} />
+                              <span
+                                onContextMenu={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  navigator.clipboard.writeText(stream.name);
+                                  window.dispatchEvent(new CustomEvent('show-copy-toast', {
+                                    detail: { x: e.clientX, y: e.clientY }
+                                  }));
+                                }}
+                                className={`truncate flex-1 text-left transition-colors ${(selectedStreamId === stream.id || isStreamVisible) ? 'text-white' : 'text-zinc-300'
+                                  }`}
+                              >
+                                {stream.name}
+                              </span>
+                            </div>
                             <span
                               onContextMenu={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                navigator.clipboard.writeText(stream.name);
+                                navigator.clipboard.writeText(stream.multicastIp);
                                 window.dispatchEvent(new CustomEvent('show-copy-toast', {
                                   detail: { x: e.clientX, y: e.clientY }
                                 }));
                               }}
-                              className={`truncate flex-1 text-left transition-colors ${(selectedStreamId === stream.id || isStreamVisible) ? 'text-white' : 'text-zinc-300'
+                              className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${isStreamVisible ? 'text-zinc-400' : 'text-zinc-500'
                                 }`}
                             >
-                              {stream.name}
+                              {stream.multicastIp}
                             </span>
-                          </div>
-                          <span
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              navigator.clipboard.writeText(stream.multicastIp);
-                              window.dispatchEvent(new CustomEvent('show-copy-toast', {
-                                detail: { x: e.clientX, y: e.clientY }
-                              }));
-                            }}
-                            className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${isStreamVisible ? 'text-zinc-400' : 'text-zinc-500'
-                              }`}
-                          >
-                            {stream.multicastIp}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
+      </GhostScroll>
     </div>
   );
 }

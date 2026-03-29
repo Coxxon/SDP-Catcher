@@ -7,6 +7,7 @@ input[type="number"]::-webkit-inner-spin-button {
   appearance: none;
   margin: 0;
 }
+
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
@@ -42,10 +43,13 @@ input[type="number"] {
   }
 
   @keyframes ghost-pulse {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 1;
       transform: scale(1);
     }
+
     50% {
       opacity: 0.15;
       transform: scale(0.85);
@@ -65,23 +69,5 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom Scrollbar - Matte & Square */
-::-webkit-scrollbar {
-  width: 10px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-neutral-900);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-neutral-800);
-  border-radius: 0;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-neutral-700);
-}
-
-
-/* No global border-radius reset - let's keep it fluid */
+/* Scrollbar styles are in scrollbar.css — imported directly in main.tsx
+   to bypass Tailwind CSS v4 PostCSS which strips ::-webkit-scrollbar rules */

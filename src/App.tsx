@@ -479,7 +479,7 @@ function App() {
       <TitleBar />
       <div className="flex flex-col flex-1 overflow-hidden" style={{ zoom: zoomLevel }}>
         {/* Dynamic Workspace Container */}
-        <div className="flex flex-1 overflow-x-auto overflow-y-hidden">
+        <div className="flex flex-1 overflow-x-auto overflow-y-hidden" style={{ scrollbarWidth: "none" }}>
         <InterfaceList
           activeIp={activeIp}
           isSniffing={isSniffing}

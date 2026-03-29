@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Copy, Check, Download, Activity, FileText, ChevronUp, ChevronDown } from "lucide-react";
+import { GhostScroll } from "./GhostScroll";
 import { save } from "@tauri-apps/plugin-dialog";
 import { writeTextFile } from "@tauri-apps/plugin-fs";
 import { invoke } from "@tauri-apps/api/core";
@@ -199,32 +200,35 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-[#1E1E1E] p-4 font-mono text-sm text-neutral-300 scrollbar-thin scrollbar-thumb-neutral-800 scrollbar-track-neutral-900">
-        {sdp ? (
-          <div className="max-w-none">
-             <div className="flex items-center gap-2 mb-4 opacity-50">
-               <Activity size="0.75rem" />
-               <span className="text-[0.625rem] uppercase tracking-widest">{sourceIp}</span>
-             </div>
-             
-             <pre className="leading-relaxed selection:bg-neutral-700 overflow-visible whitespace-pre">
-                {sdp.split(/\r?\n/).map((line, i) => (
-                  <div key={i} className="flex gap-4 hover:bg-neutral-800/10 -mx-4 px-4 transition-colors">
-                    <span className="w-5 shrink-0 text-right text-neutral-700 select-none font-bold text-[0.625rem] leading-tight flex items-center">{i + 1}</span>
-                    <span className="whitespace-nowrap">{line}</span>
-                  </div>
-                ))}
-             </pre>
-          </div>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center text-neutral-800 space-y-4">
-             <Activity size="2rem" className="animate-pulse opacity-20" />
-             <p className="text-[0.625rem] font-bold tracking-[0.3em] uppercase opacity-20">Monitoring Network</p>
-          </div>
-        )}
-      </div>
+      <GhostScroll className="flex-1 overflow-hidden bg-[#1E1E1E]">
+        <div className="p-4 font-mono text-sm text-neutral-300 min-h-full flex flex-col">
+        <div className="min-w-[420px] flex-1 flex flex-col"> {/* Preventing narrow code column shrinking */}
+          {sdp ? (
+            <div className="max-w-none">
+              <div className="flex items-center gap-2 mb-4 opacity-50">
+                <Activity size="0.75rem" />
+                <span className="text-[0.625rem] uppercase tracking-widest">{sourceIp}</span>
+              </div>
+              
+              <pre className="leading-relaxed selection:bg-neutral-700 overflow-visible whitespace-pre">
+                  {sdp.split(/\r?\n/).map((line, i) => (
+                    <div key={i} className="flex gap-4 hover:bg-neutral-800/10 -mx-4 px-4 transition-colors">
+                      <span className="w-5 shrink-0 text-right text-neutral-700 select-none font-bold text-[0.625rem] leading-tight flex items-center">{i + 1}</span>
+                      <span className="whitespace-nowrap">{line}</span>
+                    </div>
+                  ))}
+              </pre>
+            </div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-neutral-800 space-y-4">
+              <Activity size="2rem" className="animate-pulse opacity-20" />
+              <p className="text-[0.625rem] font-bold tracking-[0.3em] uppercase opacity-20">Monitoring Network</p>
+            </div>
+          )}
+        </div>
+        </div>
+      </GhostScroll>
 
-      {/* Stream Info Drawer */}
       <div className="bg-neutral-800 border-t border-neutral-700 shrink-0">
         <button
           onClick={() => setIsDrawerOpen(!isDrawerOpen)}
