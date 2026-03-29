@@ -294,7 +294,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-[15.9375rem] min-w-[15.9375rem] max-w-[15.9375rem] shrink-0">
-      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3 relative overflow-hidden">
+      <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3 relative">
 
         {/* Animated Search Bar Overlay */}
         <div
@@ -335,14 +335,17 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           <Rss size="0.875rem" className="text-neutral-400" />
           <h2 className="text-xs font-semibold text-neutral-200 uppercase tracking-tight">Streams</h2>
           
-          <div className="relative group/status flex items-center justify-center">
-            <div className={`absolute inset-0 -z-10 blur-[6px] opacity-40 rounded-full ${getStatusClasses(globalStatus)}`} />
+          <div className="relative group/status flex items-center justify-center min-w-[1.25rem] h-5">
+            <div className={`absolute inset-[-4px] -z-10 blur-[8px] opacity-60 rounded-full ${
+              globalStatus === 'online' ? 'bg-green-500' : 
+              globalStatus === 'standby' ? 'bg-orange-500' : 'bg-red-500'
+            }`} />
             <span className="text-white font-bold px-1 py-0.5 text-xs shadow-sm drop-shadow-[0_0_8px_rgba(0,0,0,0.5)]">
               {sortedDevices.reduce((acc, d) => acc + d.streams.length, 0)}
             </span>
             
             {/* Diagnostic Tooltip */}
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-32 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl py-2 px-3 z-50 opacity-0 group-hover/status:opacity-100 pointer-events-none transition-opacity duration-200">
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-32 bg-zinc-900 border border-zinc-700 rounded-lg shadow-2xl py-2 px-3 z-[100] opacity-0 group-hover/status:opacity-100 pointer-events-none transition-opacity duration-200">
               <div className="space-y-1.5">
                 <div className="flex justify-between items-center">
                   <span className="w-2 h-2 rounded-full bg-green-500" />
