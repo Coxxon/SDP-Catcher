@@ -226,6 +226,19 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     );
   };
 
+  const handleIPInteraction = (e: React.MouseEvent, ip: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.ctrlKey) {
+      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ip}`));
+    } else {
+      navigator.clipboard.writeText(ip);
+      window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+        detail: { x: e.clientX, y: e.clientY } 
+      }));
+    }
+  };
+
   const handleStreamClick = (stream: Stream) => {
     onStreamSelect(stream);
   };
@@ -423,14 +436,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                       {device.name}
                     </span>
                     <span
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(device.ip);
-                        window.dispatchEvent(new CustomEvent('show-copy-toast', { 
-                          detail: { x: e.clientX, y: e.clientY } 
-                        }));
-                      }}
+                      onContextMenu={(e) => handleIPInteraction(e, device.ip)}
                       className={`text-xs font-mono mt-0.5 transition-colors ${isVisible ? 'text-zinc-400' : 'text-zinc-500'
                         }`}
                     >
@@ -514,14 +520,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                             </span>
                           </div>
                           <span
-                            onContextMenu={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              navigator.clipboard.writeText(stream.multicastIp);
-                              window.dispatchEvent(new CustomEvent('show-copy-toast', { 
-                                detail: { x: e.clientX, y: e.clientY } 
-                              }));
-                            }}
+                            onContextMenu={(e) => handleIPInteraction(e, stream.multicastIp)}
                             className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${isStreamVisible ? 'text-zinc-400' : 'text-zinc-500'
                               }`}
                           >

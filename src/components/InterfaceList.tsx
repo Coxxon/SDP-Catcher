@@ -143,6 +143,19 @@ export function InterfaceList({
     }
   };
 
+  const handleIPInteraction = (e: React.MouseEvent, ip: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.ctrlKey) {
+      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ip}`));
+    } else {
+      navigator.clipboard.writeText(ip);
+      window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+        detail: { x: e.clientX, y: e.clientY } 
+      }));
+    }
+  };
+
   return (
     <div className={`flex flex-col h-full bg-neutral-900 border-r border-neutral-700 transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${isCollapsed ? 'w-16 min-w-[4rem] max-w-[4rem]' : 'w-[15.9375rem] min-w-[15.9375rem] max-w-[15.9375rem]'}`}>
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 relative flex items-center overflow-hidden shrink-0 w-full">
@@ -345,14 +358,7 @@ export function InterfaceList({
                       </div>
                       <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
                         <span 
-                          onContextMenu={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            navigator.clipboard.writeText(iface.ip);
-                            window.dispatchEvent(new CustomEvent('show-copy-toast', { 
-                              detail: { x: e.clientX, y: e.clientY } 
-                            }));
-                          }}
+                          onContextMenu={(e) => handleIPInteraction(e, iface.ip)}
                           className="truncate"
                         >
                           {iface.ip} <span>/{cidr}</span>
