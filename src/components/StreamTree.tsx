@@ -331,7 +331,10 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-0 space-y-0">
+      <div 
+        onMouseLeave={() => setFocusedId(null)}
+        className="flex-1 overflow-y-auto p-0 space-y-0"
+      >
         {devices.length === 0 ? (
           <div className="p-4 text-center text-neutral-600 text-xs italic">
             Scanning for SAP...
@@ -448,7 +451,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                           key={stream.id}
                           onClick={() => handleStreamClick(stream)}
                           onMouseEnter={() => setFocusedId(stream.id)}
-                          className={`w-full flex flex-col items-start py-2 px-8 text-[0.75rem] transition-all border-b border-neutral-800/30 relative overflow-hidden ${
+                          className={`w-full flex flex-col items-start py-2 pl-8 pr-3 text-[0.75rem] transition-all border-b border-neutral-800/30 relative overflow-hidden ${
                             selectedStreamId === stream.id
                               ? "bg-neutral-800 text-white font-bold"
                               : isStreamFocused 
@@ -457,7 +460,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                           }`}
                         >
                           {isStreamFocused && selectedStreamId !== stream.id && (
-                            <div className="absolute left-[24px] top-0 w-0.5 h-full bg-zinc-600 z-20" />
+                            <div className="absolute left-0 top-0 w-0.5 h-full bg-zinc-500 z-20" />
                           )}
                           <div className="flex items-center gap-2 w-full relative z-10">
                             <div className={`w-1.5 h-1.5 ${streamStatusClass}`} />
