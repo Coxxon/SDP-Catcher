@@ -12,10 +12,13 @@
   "app": {
     "windows": [
       {
-        "title": "tauri-app",
+        "title": "SDP Catcher",
         "width": 800,
         "height": 600,
-        "minWidth": 608
+        "minWidth": 800,
+        "theme": "Dark",
+        "titlebarStyle": "Visible",
+        "windowColor": "#09090b"
       }
     ],
     "security": {
