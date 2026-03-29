@@ -138,13 +138,13 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
   };
 
   // Reset display mode to 'auto' when SDP or IP changes
-  const handleIPInteraction = (e: React.MouseEvent, ip: string) => {
+  const handleIPInteraction = (e: React.MouseEvent, textToCopy: string, ipToOpen?: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.ctrlKey) {
-      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ip}`));
+    if (e.ctrlKey && ipToOpen && ipToOpen !== '---') {
+      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ipToOpen}`));
     } else {
-      navigator.clipboard.writeText(ip);
+      navigator.clipboard.writeText(textToCopy);
       window.dispatchEvent(new CustomEvent('show-copy-toast', { 
         detail: { x: e.clientX, y: e.clientY } 
       }));
@@ -258,7 +258,7 @@ export function SdpViewer({ sdp, sourceIp }: SdpViewerProps) {
                 onClick={cycleDisplayMode}
                 onContextMenu={(e) => {
                   const text = getDisplayText();
-                  if (text) handleIPInteraction(e, text);
+                  if (text) handleIPInteraction(e, text, resolved?.ip);
                 }}
                 className={`text-[0.625rem] text-neutral-200 font-mono font-bold tracking-tight px-1 rounded transition-all ${hasIp || hasName ? 'cursor-pointer hover:text-white hover:bg-white/5' : ''}`}
               >

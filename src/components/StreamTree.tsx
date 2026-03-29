@@ -226,13 +226,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     );
   };
 
-  const handleIPInteraction = (e: React.MouseEvent, ip: string) => {
+  const handleIPInteraction = (e: React.MouseEvent, textToCopy: string, ipToOpen?: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.ctrlKey) {
-      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ip}`));
+    if (e.ctrlKey && ipToOpen && ipToOpen !== '---') {
+      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ipToOpen}`));
     } else {
-      navigator.clipboard.writeText(ip);
+      navigator.clipboard.writeText(textToCopy);
       window.dispatchEvent(new CustomEvent('show-copy-toast', { 
         detail: { x: e.clientX, y: e.clientY } 
       }));
@@ -422,21 +422,14 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
 
                   <div className="relative z-10 flex flex-col items-start leading-none min-w-0 text-left">
                     <span
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        navigator.clipboard.writeText(device.name);
-                        window.dispatchEvent(new CustomEvent('show-copy-toast', { 
-                          detail: { x: e.clientX, y: e.clientY } 
-                        }));
-                      }}
+                      onContextMenu={(e) => handleIPInteraction(e, device.name, device.ip)}
                       className={`text-[0.6875rem] font-bold truncate w-full tracking-tight pb-0.5 transition-colors ${isVisible ? 'text-white' : 'text-neutral-200'
                         }`}
                     >
                       {device.name}
                     </span>
                     <span
-                      onContextMenu={(e) => handleIPInteraction(e, device.ip)}
+                      onContextMenu={(e) => handleIPInteraction(e, device.ip, device.ip)}
                       className={`text-xs font-mono mt-0.5 transition-colors ${isVisible ? 'text-zinc-400' : 'text-zinc-500'
                         }`}
                     >
@@ -520,7 +513,14 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                             </span>
                           </div>
                           <span
-                            onContextMenu={(e) => handleIPInteraction(e, stream.multicastIp)}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(stream.multicastIp);
+                              window.dispatchEvent(new CustomEvent('show-copy-toast', { 
+                                detail: { x: e.clientX, y: e.clientY } 
+                              }));
+                            }}
                             className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${isStreamVisible ? 'text-zinc-400' : 'text-zinc-500'
                               }`}
                           >

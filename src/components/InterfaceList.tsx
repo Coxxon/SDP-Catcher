@@ -143,13 +143,13 @@ export function InterfaceList({
     }
   };
 
-  const handleIPInteraction = (e: React.MouseEvent, ip: string) => {
+  const handleIPInteraction = (e: React.MouseEvent, textToCopy: string, ipToOpen?: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.ctrlKey) {
-      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ip}`));
+    if (e.ctrlKey && ipToOpen && ipToOpen !== '---') {
+      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ipToOpen}`));
     } else {
-      navigator.clipboard.writeText(ip);
+      navigator.clipboard.writeText(textToCopy);
       window.dispatchEvent(new CustomEvent('show-copy-toast', { 
         detail: { x: e.clientX, y: e.clientY } 
       }));
@@ -358,7 +358,7 @@ export function InterfaceList({
                       </div>
                       <div className="flex items-center justify-between text-xs text-zinc-500 font-mono">
                         <span 
-                          onContextMenu={(e) => handleIPInteraction(e, iface.ip)}
+                          onContextMenu={(e) => handleIPInteraction(e, iface.ip, iface.ip)}
                           className="truncate"
                         >
                           {iface.ip} <span>/{cidr}</span>

@@ -461,13 +461,13 @@ function App() {
     return () => document.removeEventListener('contextmenu', disableContextMenu);
   }, []);
 
-  const handleIPInteraction = (e: React.MouseEvent, ip: string) => {
+  const handleIPInteraction = (e: React.MouseEvent, textToCopy: string, ipToOpen?: string) => {
     e.preventDefault();
     e.stopPropagation();
-    if (e.ctrlKey) {
-      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ip}`));
+    if (e.ctrlKey && ipToOpen && ipToOpen !== '---') {
+      import('@tauri-apps/plugin-opener').then(({ openUrl }) => openUrl(`http://${ipToOpen}`));
     } else {
-      navigator.clipboard.writeText(ip);
+      navigator.clipboard.writeText(textToCopy);
       window.dispatchEvent(new CustomEvent('show-copy-toast', { 
         detail: { x: e.clientX, y: e.clientY } 
       }));
@@ -518,7 +518,12 @@ function App() {
             <span className="text-neutral-500 uppercase tracking-widest">PTPV2 GMC:</span>
             <span 
               onClick={isPtpActive ? cycleFooterDisplayMode : undefined}
-              onContextMenu={(e) => handleIPInteraction(e, getFooterGmcText())}
+              onContextMenu={(e) => {
+                const ptpId = lastPtpInfo.ptp_id;
+                const resolved = arpTable[ptpId];
+                const ip = resolved?.ip && resolved.ip !== '---' ? resolved.ip : lastPtpInfo.ip;
+                handleIPInteraction(e, getFooterGmcText(), ip === '---' ? undefined : ip);
+              }}
               className={`text-neutral-200 transition-colors ${isPtpActive ? 'hover:text-white cursor-pointer' : 'text-neutral-600 italic cursor-not-allowed'}`}
             >
               {isPtpActive ? getFooterGmcText() : (activeIp ? "No PTP data for this PTP Domain" : "Select Interface")}
