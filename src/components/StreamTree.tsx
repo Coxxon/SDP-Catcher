@@ -20,7 +20,15 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'ip'>('name');
   const [useDefaultTimeout, setUseDefaultTimeout] = useState<Record<string, boolean>>({});
-  const [focusedId, setFocusedId] = useState<string | null>(null);
+   const [focusedId, setFocusedId] = useState<string | null>(null);
+   const [isFocusVisible, setIsFocusVisible] = useState(false);
+   const focusTimer = useRef<any>(null);
+
+   const showFocusTemporarily = () => {
+     setIsFocusVisible(true);
+     if (focusTimer.current) clearTimeout(focusTimer.current);
+     focusTimer.current = setTimeout(() => setIsFocusVisible(false), 2000);
+   };
 
   const ipToNumber = (ip: string) => {
     return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0);
@@ -137,6 +145,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           } else {
             setFocusedId(visibleItems[currentIndex + 1].id);
           }
+          showFocusTemporarily();
           break;
         case 'ArrowUp':
           e.preventDefault();
@@ -145,6 +154,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           } else {
             setFocusedId(visibleItems[currentIndex - 1].id);
           }
+          showFocusTemporarily();
           break;
         case 'ArrowRight':
           if (focusedId) {
@@ -174,8 +184,10 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
               e.preventDefault();
               if (item.type === 'device') {
                 toggleDevice(item.id);
+                showFocusTemporarily();
               } else if (item.stream) {
                 onStreamSelect(item.stream);
+                showFocusTemporarily();
               }
             }
           }
@@ -184,7 +196,10 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     };
 
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (focusTimer.current) clearTimeout(focusTimer.current);
+    };
   }, [visibleItems, focusedId, expandedDevices, onStreamSelect]);
 
   const isAllExpanded = sortedDevices.length > 0 && sortedDevices.every(d => expandedDevices.includes(d.ip));
@@ -332,7 +347,10 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
       </div>
 
       <div 
-        onMouseLeave={() => setFocusedId(null)}
+        onMouseLeave={() => {
+          setIsFocusVisible(false);
+          if (focusTimer.current) clearTimeout(focusTimer.current);
+        }}
         className="flex-1 overflow-y-auto p-0 space-y-0"
       >
         {devices.length === 0 ? (
@@ -348,6 +366,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           sortedDevices.map((device) => {
             const isExpanded = expandedDevices.includes(device.ip);
             const isFocused = focusedId === device.ip;
+            const isVisible = isFocused && isFocusVisible;
             const status = getDeviceStatus(device);
             const statusClass = getStatusClasses(status, device.isGhost);
 
@@ -363,19 +382,23 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
               <div key={device.ip} className="border-b border-neutral-800/50">
                 <button
                   onClick={() => toggleDevice(device.ip)}
-                  onMouseEnter={() => setFocusedId(device.ip)}
+                  onMouseEnter={() => {
+                    setFocusedId(device.ip);
+                    setIsFocusVisible(true);
+                    if (focusTimer.current) clearTimeout(focusTimer.current);
+                  }}
                   className={`w-full flex items-center gap-2 px-3 py-2 transition-all group relative overflow-hidden ${
-                    isFocused ? 'bg-neutral-800/80' : 'bg-neutral-950 hover:bg-neutral-900/60'
+                    isVisible ? 'bg-neutral-800/80' : 'bg-neutral-950 hover:bg-neutral-900/60'
                   }`}
                 >
-                  {isFocused && (
-                    <div className="absolute left-0 top-0 w-0.5 h-full bg-zinc-500 z-20" />
+                  {isVisible && (
+                    <div className="absolute inset-y-0 left-0 w-[2px] bg-zinc-500 z-20" />
                   )}
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
-                    <ChevronRight size="0.875rem" className={isFocused ? "text-neutral-300" : "text-neutral-600"} />
+                    <ChevronRight size="0.875rem" className={isVisible ? "text-neutral-300" : "text-neutral-600"} />
                   </div>
                   <div className="relative pointer-events-none">
-                    <HardDrive size="0.875rem" className={`transition-colors ${isFocused ? "text-neutral-200" : "text-neutral-500 group-hover:text-neutral-300"}`} />
+                    <HardDrive size="0.875rem" className={`transition-colors ${isVisible ? "text-neutral-200" : "text-neutral-500 group-hover:text-neutral-300"}`} />
                     <div className={`absolute -top-1 -right-1 w-2 h-2 ${statusClass}`} />
                   </div>
 
@@ -387,7 +410,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                         navigator.clipboard.writeText(device.name);
                       }}
                       className={`text-[0.6875rem] font-bold truncate w-full tracking-tight pb-0.5 transition-colors ${
-                        isFocused ? 'text-white' : 'text-neutral-200'
+                        isVisible ? 'text-white' : 'text-neutral-200'
                       }`}
                     >
                       {device.name}
@@ -399,7 +422,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                         navigator.clipboard.writeText(device.ip);
                       }}
                       className={`text-xs font-mono mt-0.5 transition-colors ${
-                        isFocused ? 'text-zinc-400' : 'text-zinc-500'
+                        isVisible ? 'text-zinc-400' : 'text-zinc-500'
                       }`}
                     >
                       {device.ip}
@@ -409,7 +432,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   {/* Background Ghost Logo */}
                   {manufacturerLogos[device.manufacturer.split(' (')[0]] && (
                     <div className={`absolute top-0 right-0 h-full w-24 opacity-[0.40] pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden transition-colors ${
-                      isFocused ? 'text-neutral-500' : 'text-neutral-600'
+                      isVisible ? 'text-neutral-500' : 'text-neutral-600'
                     }`}>
                       {manufacturerLogos[device.manufacturer.split(' (')[0]]}
                     </div>
@@ -445,22 +468,27 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                       const streamStatus = getStreamStatus(stream);
                       const streamStatusClass = getStatusClasses(streamStatus, stream.isGhost);
                       const isStreamFocused = focusedId === stream.id;
+                      const isStreamVisible = isStreamFocused && isFocusVisible;
 
                       return (
                         <button
                           key={stream.id}
                           onClick={() => handleStreamClick(stream)}
-                          onMouseEnter={() => setFocusedId(stream.id)}
+                          onMouseEnter={() => {
+                            setFocusedId(stream.id);
+                            setIsFocusVisible(true);
+                            if (focusTimer.current) clearTimeout(focusTimer.current);
+                          }}
                           className={`w-full flex flex-col items-start py-2 pl-8 pr-3 text-[0.75rem] transition-all border-b border-neutral-800/30 relative overflow-hidden ${
                             selectedStreamId === stream.id
                               ? "bg-neutral-800 text-white font-bold"
-                              : isStreamFocused 
+                              : isStreamVisible 
                                 ? "bg-neutral-800/40 text-white"
                                 : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
                           }`}
                         >
-                          {isStreamFocused && selectedStreamId !== stream.id && (
-                            <div className="absolute left-0 top-0 w-0.5 h-full bg-zinc-500 z-20" />
+                          {isStreamVisible && selectedStreamId !== stream.id && (
+                            <div className="absolute inset-y-0 left-0 w-[2px] bg-zinc-500 z-20" />
                           )}
                           <div className="flex items-center gap-2 w-full relative z-10">
                             <div className={`w-1.5 h-1.5 ${streamStatusClass}`} />
@@ -471,7 +499,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                                 navigator.clipboard.writeText(stream.name);
                               }}
                               className={`truncate flex-1 text-left transition-colors ${
-                                (selectedStreamId === stream.id || isStreamFocused) ? 'text-white' : 'text-zinc-300'
+                                (selectedStreamId === stream.id || isStreamVisible) ? 'text-white' : 'text-zinc-300'
                               }`}
                             >
                               {stream.name}
@@ -484,7 +512,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                               navigator.clipboard.writeText(stream.multicastIp);
                             }}
                             className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${
-                              isStreamFocused ? 'text-zinc-400' : 'text-zinc-500'
+                              isStreamVisible ? 'text-zinc-400' : 'text-zinc-500'
                             }`}
                           >
                             {stream.multicastIp}
