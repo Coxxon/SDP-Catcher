@@ -42,24 +42,24 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
-        isSearchOpen && 
-        searchContainerRef.current && 
+        isSearchOpen &&
+        searchContainerRef.current &&
         !searchContainerRef.current.contains(event.target as Node) &&
         !searchQuery
       ) {
         setIsSearchOpen(false);
       }
     };
-    
+
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isSearchOpen, searchQuery]);
 
   const filteredDevices = devices.reduce((acc: Device[], device) => {
     const q = searchQuery.toLowerCase();
-    
+
     // Check if the device itself matches the query
-    const deviceMatch = 
+    const deviceMatch =
       device.name.toLowerCase().includes(q) ||
       device.ip.toLowerCase().includes(q) ||
       device.mac.toLowerCase().includes(q) ||
@@ -71,15 +71,15 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     }
 
     // If the device doesn't match, check if any of its streams do
-    const matchingStreams = device.streams.filter(s => 
-      s.name.toLowerCase().includes(q) || 
+    const matchingStreams = device.streams.filter(s =>
+      s.name.toLowerCase().includes(q) ||
       s.multicastIp.toLowerCase().includes(q)
     );
 
     if (matchingStreams.length > 0) {
       acc.push({ ...device, streams: matchingStreams });
     }
-    
+
     return acc;
   }, []);
 
@@ -140,20 +140,16 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   return (
     <div className="flex flex-col h-full bg-neutral-900 border-r border-neutral-700 w-[15.9375rem] min-w-[15.9375rem] max-w-[15.9375rem] shrink-0">
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3 relative overflow-hidden">
-        
+
         {/* Animated Search Bar Overlay */}
         <div 
           ref={searchContainerRef}
-          className={`absolute inset-0 z-10 flex items-center px-3 bg-zinc-950 ${
-            !isSearchOpen ? 'pointer-events-none' : ''
+          className={`absolute inset-0 z-10 flex items-center px-3 bg-zinc-950 transition-transform duration-300 ease-in-out origin-right ${
+            isSearchOpen ? 'scale-x-100' : 'scale-x-0 pointer-events-none'
           }`}
-          style={{ 
-            clipPath: isSearchOpen ? 'circle(150% at calc(100% - 40px) 50%)' : 'circle(0% at calc(100% - 40px) 50%)',
-            transition: 'clip-path 0.4s cubic-bezier(0.4, 0, 0.2, 1)' 
-          }}
         >
           <Search size="0.875rem" className="text-neutral-500 shrink-0" />
-          <input 
+          <input
             ref={searchInputRef}
             type="text"
             value={searchQuery}
@@ -169,7 +165,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
             placeholder="Search streams..."
             className="flex-1 bg-transparent px-2 text-xs text-neutral-200 focus:outline-none min-w-0 font-sans"
           />
-          <button 
+          <button
             onClick={() => {
               if (searchQuery) setSearchQuery('');
               else setIsSearchOpen(false);
@@ -228,7 +224,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
             const isExpanded = expandedDevices.includes(device.ip);
             const status = getDeviceStatus(device);
             const statusClass = getStatusClasses(status);
-            
+
             // Optimistic UI cache for immediate response without waiting for backend network packet sync
             if (!originalTimeouts.current[device.ip]) {
               originalTimeouts.current[device.ip] = device.sapTimeoutMs / 1000;
@@ -275,14 +271,14 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                           {device.manufacturer === 'Unknown' && ' (fallback)'}
                         </span>
                       </div>
-                      <div 
+                      <div
                         onClick={() => handleTimeoutToggle(device.ip)}
                         className="flex items-center justify-between group/sap h-4.5 cursor-pointer transition-colors"
                       >
                         <span className="text-[0.5625rem] text-neutral-500 uppercase font-bold tracking-wider whitespace-nowrap transition-colors">
                           SAP Timeout {useDefaultTimeout[device.ip] ? "(DEFAULT)" : ""}
                         </span>
-                        
+
                         <span className="text-[0.625rem] text-neutral-200 font-mono whitespace-nowrap transition-colors">
                           {displayedTimeoutMs}s
                         </span>

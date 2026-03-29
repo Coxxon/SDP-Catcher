@@ -13,7 +13,7 @@
     "windows": [
       {
         "title": "SDP Catcher",
-        "width": 1050,
+        "width": 800,
         "height": 600,
         "minWidth": 800,
         "theme": "Dark",
