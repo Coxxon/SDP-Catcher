@@ -20,17 +20,9 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'ip'>('name');
   const [useDefaultTimeout, setUseDefaultTimeout] = useState<Record<string, boolean>>({});
-   const [focusedId, setFocusedId] = useState<string | null>(null);
-   const [isFocusVisible, setIsFocusVisible] = useState(false);
-   const focusTimer = useRef<any>(null);
-
-   useEffect(() => {
-     if (focusedId) {
-       setIsFocusVisible(true);
-       if (focusTimer.current) clearTimeout(focusTimer.current);
-       focusTimer.current = setTimeout(() => setIsFocusVisible(false), 2000);
-     }
-   }, [focusedId]);
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const [isFocusVisible, setIsFocusVisible] = useState(false);
+  const focusTimer = useRef<any>(null);
 
   const ipToNumber = (ip: string) => {
     return ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0);
@@ -139,6 +131,13 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
 
       const currentIndex = visibleItems.findIndex(item => item.id === focusedId);
 
+      // Fonction dédiée pour déclencher le chrono UNIQUEMENT au clavier
+      const triggerKeyboardFocus = () => {
+        setIsFocusVisible(true);
+        if (focusTimer.current) clearTimeout(focusTimer.current);
+        focusTimer.current = setTimeout(() => setIsFocusVisible(false), 2000);
+      };
+
       switch (e.key) {
         case 'ArrowDown':
           e.preventDefault();
@@ -147,6 +146,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           } else {
             setFocusedId(visibleItems[currentIndex + 1].id);
           }
+          triggerKeyboardFocus();
           break;
         case 'ArrowUp':
           e.preventDefault();
@@ -155,6 +155,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
           } else {
             setFocusedId(visibleItems[currentIndex - 1].id);
           }
+          triggerKeyboardFocus();
           break;
         case 'ArrowRight':
           if (focusedId) {
@@ -163,6 +164,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
               e.preventDefault();
               toggleDevice(item.id);
             }
+            triggerKeyboardFocus();
           }
           break;
         case 'ArrowLeft':
@@ -175,6 +177,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
               e.preventDefault();
               setFocusedId(item.device.ip);
             }
+            triggerKeyboardFocus();
           }
           break;
         case 'Enter':
@@ -187,6 +190,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
               } else if (item.stream) {
                 onStreamSelect(item.stream);
               }
+              triggerKeyboardFocus();
             }
           }
           break;
@@ -196,9 +200,15 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      if (focusTimer.current) clearTimeout(focusTimer.current);
     };
   }, [visibleItems, focusedId, expandedDevices, onStreamSelect]);
+
+  // Nettoyage du chrono uniquement au démontage du composant
+  useEffect(() => {
+    return () => {
+      if (focusTimer.current) clearTimeout(focusTimer.current);
+    };
+  }, []);
 
   const isAllExpanded = sortedDevices.length > 0 && sortedDevices.every(d => expandedDevices.includes(d.ip));
 
@@ -261,11 +271,10 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
       <div className="bg-neutral-800 border-b border-neutral-700 h-14 flex items-center justify-between px-3 relative overflow-hidden">
 
         {/* Animated Search Bar Overlay */}
-        <div 
+        <div
           ref={searchContainerRef}
-          className={`absolute inset-0 z-10 flex items-center px-3 bg-zinc-950 transition-transform duration-300 ease-in-out origin-right ${
-            isSearchOpen ? 'scale-x-100' : 'scale-x-0 pointer-events-none'
-          }`}
+          className={`absolute inset-0 z-10 flex items-center px-3 bg-zinc-950 transition-transform duration-50 ease-in-out origin-right ${isSearchOpen ? 'scale-x-100' : 'scale-x-0 pointer-events-none'
+            }`}
         >
           <Search size="0.875rem" className="text-neutral-500 shrink-0" />
           <input
@@ -319,11 +328,11 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
             {sortBy === 'name' ? (
               <ArrowDownAZ size="0.875rem" />
             ) : (
-              <svg width="0.875rem" height="0.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" className="lucide">
-                <path d="m3 16 4 4 4-4"/>
-                <path d="M7 20V4"/>
-                <path d="M17 4v6"/>
-                <path d="M15 20v-6h3a1.5 1.5 0 0 1 0 3h-3"/>
+              <svg width="0.875rem" height="0.875rem" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide">
+                <path d="m3 16 4 4 4-4" />
+                <path d="M7 20V4" />
+                <path d="M17 4v6" />
+                <path d="M15 20v-6h3a1.5 1.5 0 0 1 0 3h-3" />
               </svg>
             )}
           </button>
@@ -344,7 +353,7 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
         </div>
       </div>
 
-      <div 
+      <div
         onMouseLeave={() => {
           setIsFocusVisible(false);
           if (focusTimer.current) clearTimeout(focusTimer.current);
@@ -385,13 +394,11 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                     setIsFocusVisible(true);
                     if (focusTimer.current) clearTimeout(focusTimer.current);
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 transition-all duration-500 group relative ${
-                    isVisible ? 'bg-neutral-800/80' : 'bg-neutral-950 hover:bg-neutral-900/60'
-                  }`}
+                  className={`w-full flex items-center gap-2 px-3 py-2 transition-all duration-500 group relative focus:outline-none ${isVisible ? 'bg-neutral-800/80' : 'bg-neutral-950 hover:bg-neutral-900/60'
+                    }`}
                 >
-                  <div className={`absolute top-0 -bottom-px -left-px w-[3px] bg-zinc-400 z-20 transition-opacity duration-500 ${
-                    isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                  }`} />
+                  <div className={`absolute top-0 -bottom-px -left-px w-[3px] bg-zinc-400 z-20 transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                    }`} />
                   <div className={`transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
                     <ChevronRight size="0.875rem" className={isVisible ? "text-neutral-300" : "text-neutral-600"} />
                   </div>
@@ -401,27 +408,25 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                   </div>
 
                   <div className="relative z-10 flex flex-col items-start leading-none min-w-0 text-left">
-                    <span 
+                    <span
                       onContextMenu={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         navigator.clipboard.writeText(device.name);
                       }}
-                      className={`text-[0.6875rem] font-bold truncate w-full tracking-tight pb-0.5 transition-colors ${
-                        isVisible ? 'text-white' : 'text-neutral-200'
-                      }`}
+                      className={`text-[0.6875rem] font-bold truncate w-full tracking-tight pb-0.5 transition-colors ${isVisible ? 'text-white' : 'text-neutral-200'
+                        }`}
                     >
                       {device.name}
                     </span>
-                    <span 
+                    <span
                       onContextMenu={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         navigator.clipboard.writeText(device.ip);
                       }}
-                      className={`text-xs font-mono mt-0.5 transition-colors ${
-                        isVisible ? 'text-zinc-400' : 'text-zinc-500'
-                      }`}
+                      className={`text-xs font-mono mt-0.5 transition-colors ${isVisible ? 'text-zinc-400' : 'text-zinc-500'
+                        }`}
                     >
                       {device.ip}
                     </span>
@@ -429,9 +434,8 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
 
                   {/* Background Ghost Logo */}
                   {manufacturerLogos[device.manufacturer.split(' (')[0]] && (
-                    <div className={`absolute top-0 right-0 h-full w-24 opacity-[0.40] pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden transition-colors ${
-                      isVisible ? 'text-neutral-500' : 'text-neutral-600'
-                    }`}>
+                    <div className={`absolute top-0 right-0 h-full w-24 opacity-[0.40] pointer-events-none z-0 flex items-center justify-end pr-2 overflow-hidden transition-colors ${isVisible ? 'text-neutral-500' : 'text-neutral-600'
+                      }`}>
                       {manufacturerLogos[device.manufacturer.split(' (')[0]]}
                     </div>
                   )}
@@ -477,41 +481,37 @@ export function StreamTree({ devices, onStreamSelect, selectedStreamId, onClearO
                             setIsFocusVisible(true);
                             if (focusTimer.current) clearTimeout(focusTimer.current);
                           }}
-                          className={`w-full flex flex-col items-start py-2 pl-8 pr-3 text-[0.75rem] transition-all duration-500 border-b border-neutral-800/30 relative ${
-                            selectedStreamId === stream.id
-                              ? "bg-neutral-800 text-white font-bold"
-                              : isStreamVisible 
-                                ? "bg-neutral-800/40 text-white"
-                                : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
-                          }`}
+                          className={`w-full flex flex-col items-start py-2 pl-8 pr-3 text-[0.75rem] transition-all duration-500 border-b border-neutral-800/30 relative focus:outline-none ${selectedStreamId === stream.id
+                            ? "bg-neutral-800 text-white font-bold"
+                            : isStreamVisible
+                              ? "bg-neutral-800/40 text-white"
+                              : "text-zinc-500 hover:text-zinc-200 hover:bg-neutral-800/40"
+                            }`}
                         >
-                          <div className={`absolute top-0 -bottom-px -left-px w-[3px] bg-zinc-400 z-20 transition-opacity duration-500 ${
-                            isStreamVisible && selectedStreamId !== stream.id ? 'opacity-100' : 'opacity-0 pointer-events-none'
-                          }`} />
+                          <div className={`absolute top-0 -bottom-px -left-px w-[3px] bg-zinc-400 z-20 transition-opacity duration-500 ${isStreamVisible && selectedStreamId !== stream.id ? 'opacity-100' : 'opacity-0 pointer-events-none'
+                            }`} />
                           <div className="flex items-center gap-2 w-full relative z-10">
                             <div className={`w-1.5 h-1.5 ${streamStatusClass}`} />
-                            <span 
+                            <span
                               onContextMenu={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 navigator.clipboard.writeText(stream.name);
                               }}
-                              className={`truncate flex-1 text-left transition-colors ${
-                                (selectedStreamId === stream.id || isStreamVisible) ? 'text-white' : 'text-zinc-300'
-                              }`}
+                              className={`truncate flex-1 text-left transition-colors ${(selectedStreamId === stream.id || isStreamVisible) ? 'text-white' : 'text-zinc-300'
+                                }`}
                             >
                               {stream.name}
                             </span>
                           </div>
-                          <span 
+                          <span
                             onContextMenu={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                               navigator.clipboard.writeText(stream.multicastIp);
                             }}
-                            className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${
-                              isStreamVisible ? 'text-zinc-400' : 'text-zinc-500'
-                            }`}
+                            className={`text-xs font-mono mt-0.5 pl-3.5 transition-colors relative z-10 ${isStreamVisible ? 'text-zinc-400' : 'text-zinc-500'
+                              }`}
                           >
                             {stream.multicastIp}
                           </span>
