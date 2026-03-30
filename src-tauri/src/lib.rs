@@ -1,7 +1,7 @@
 mod manufacturer;
 
 use serde::Serialize;
-use std::net::Ipv4Addr;
+use std::net::{Ipv4Addr, UdpSocket};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -138,57 +138,53 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                 iface.ips.iter().any(|ip_net| ip_net.ip().to_string() == target_ip)
             });
 
+            if let Some(iface) = interface {
                 let mut config = datalink::Config::default();
                 config.promiscuous = true;
 
-                if let Some(iface) = interface {
-                    println!("Tentative d'ouverture du canal pnet sur l'interface : {}", iface.name);
-                    let mut rx = match datalink::channel(&iface, config) {
-                        Ok(Channel::Ethernet(_, rx)) => {
-                            println!("SUCCÈS : Canal Ethernet pnet ouvert !");
-                            rx
-                        },
-                        Ok(_) => {
-                            eprintln!("ERREUR : Type de canal non supporté.");
-                            return;
-                        },
-                        Err(e) => {
-                            eprintln!("ERREUR CRITIQUE pnet : Impossible d'ouvrir le canal. Npcap est-il bien installé en mode compatibilité WinPcap ? Détail : {}", e);
-                            return;
-                        }
-                    };
+                println!("Tentative d'ouverture du canal pnet sur l'interface : {}", iface.name);
+                let mut rx = match datalink::channel(&iface, config) {
+                    Ok(Channel::Ethernet(_, rx)) => {
+                        println!("SUCCÈS : Canal Ethernet pnet ouvert !");
+                        rx
+                    },
+                    Ok(_) => {
+                        eprintln!("ERREUR : Type de canal non supporté.");
+                        return;
+                    },
+                    Err(e) => {
+                        eprintln!("ERREUR CRITIQUE pnet : Impossible d'ouvrir le canal. Npcap est-il bien installé en mode compatibilité WinPcap ? Détail : {}", e);
+                        return;
+                    }
+                };
 
-                    let interface_name = iface.name.clone();
-                    println!("Début de la boucle de capture pnet sur {} !", interface_name);
-                    let mut debug_packet_count = 0;
+                // --- GHOST SOCKET IGMP ---
+                if let Ok(ghost_socket) = UdpSocket::bind("0.0.0.0:0") {
+                    let iface_ip: Ipv4Addr = iface.ips.iter()
+                        .filter_map(|ip| {
+                            if let pnet::ipnetwork::IpNetwork::V4(ipv4) = ip {
+                                Some(ipv4.ip())
+                            } else {
+                                None
+                            }
+                        })
+                        .next()
+                        .unwrap_or(Ipv4Addr::new(0, 0, 0, 0));
+
+                    let _ = ghost_socket.join_multicast_v4(&Ipv4Addr::new(239, 255, 255, 255), &iface_ip);
+                    let _ = ghost_socket.join_multicast_v4(&Ipv4Addr::new(239, 202, 29, 2), &iface_ip);
+                    println!("Ghost Socket IGMP activé pour AES67 et NSA-002 sur l'IP {}", iface_ip);
+                    
+                    let _keep_alive = ghost_socket;
 
                     while !stop_flag_node.load(Ordering::Relaxed) {
                         match rx.next() {
                             Ok(packet) => {
-                                debug_packet_count += 1;
-                                if debug_packet_count % 1000 == 0 {
-                                    println!("[{}] ... {} paquets traversent ...", interface_name, debug_packet_count);
-                                }
-
-                                // --- RAW BYTE RADAR ---
-                                // On cherche l'IP 239.202.29.2 (ef ca 1d 02) ou le port 9875 (26 93) n'importe où
-                                let contains_ip = packet.windows(4).any(|w| w == &[0xef, 0xca, 0x1d, 0x02]);
-                                let contains_port = packet.windows(2).any(|w| w == &[0x26, 0x93]);
-
-                                if contains_ip || contains_port {
-                                    println!(">>> TRACE BRUTE SAP TROUVÉE SUR {} <<<", interface_name);
-                                    println!("Taille : {} octets", packet.len());
-                                    let print_len = std::cmp::min(packet.len(), 50);
-                                    println!("Hex : {:02x?}", &packet[..print_len]);
-                                }
-                                // ----------------------
-
                                 if let Some(eth) = EthernetPacket::new(packet) {
                                     let mut current_ethertype = eth.get_ethertype();
                                     let mut current_payload = eth.payload();
                                     let vlan_holder;
 
-                                    // Unpack VLAN if present
                                     if current_ethertype == EtherTypes::Vlan {
                                         vlan_holder = VlanPacket::new(current_payload);
                                         if let Some(ref vlan) = vlan_holder {
@@ -201,7 +197,6 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                         vlan_holder = None;
                                     }
 
-                                    // 1. LLDP Capture
                                     if current_ethertype == EtherTypes::Lldp {
                                         if let Some((mac, name, ip)) = parse_lldp(current_payload) {
                                             let mut table = discovery_node.lock().unwrap();
@@ -213,21 +208,13 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                             }
                                         }
                                     } 
-                                    // 2. SAP Capture (IPv4 -> UDP -> Port 9875)
                                     else if current_ethertype == EtherTypes::Ipv4 {
                                         if let Some(ipv4) = Ipv4Packet::new(current_payload) {
-                                            let dest_ip = ipv4.get_destination().to_string();
-                                            if dest_ip == "239.202.29.2" {
-                                                println!(">> PAQUET MULTICAST NSA-002 VU ! Protocole: {:?}", ipv4.get_next_level_protocol());
-                                            }
-
                                             if ipv4.get_next_level_protocol() == IpNextHeaderProtocols::Udp {
                                                 if let Some(udp) = UdpPacket::new(ipv4.payload()) {
                                                     if udp.get_destination() == 9875 {
-                                                        println!("Paquet UDP 9875 détecté depuis IP : {}", ipv4.get_source());
                                                         let sap_payload = udp.payload();
                                                         if let Some(pos) = sap_payload.windows(3).position(|w| w == b"v=0") {
-                                                            println!("Marqueur v=0 trouvé pour l'IP : {}", ipv4.get_source());
                                                             let sdp_bytes = &sap_payload[pos..];
                                                             let sdp_content = String::from_utf8_lossy(sdp_bytes).to_string();
                                                             
@@ -302,9 +289,10 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                             }
                         }
                     }
-                    println!("Sortie de la boucle de capture (Thread terminé).");
                 }
-            });
+                println!("Sortie de la boucle de capture (Thread terminé).");
+            }
+        });
         }
 
     // Spawn Global PTP Socket thread
