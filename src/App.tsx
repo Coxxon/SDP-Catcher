@@ -213,9 +213,8 @@ function App() {
   // Global Sniffing Management
   const startGlobalSniffing = async (ifaces: InterfaceInfo[]) => {
     if (ifaces.length === 0) return;
-    const ips = ifaces.map(i => i.ip);
     try {
-      await invoke("start_sniffing", { interfaceIps: ips });
+      await invoke("start_sniffing", { selectedInterfaces: ifaces });
       setIsSniffing(true);
     } catch (err) {
       console.error("Failed to start global sniffing", err);

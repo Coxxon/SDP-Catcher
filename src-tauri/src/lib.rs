@@ -1,6 +1,6 @@
 mod manufacturer;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -22,7 +22,7 @@ use std::collections::HashMap;
 #[cfg(windows)]
 use std::os::windows::process::CommandExt;
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct NetworkInterface {
     name: String,
     ip: String,
@@ -113,7 +113,7 @@ fn get_network_interfaces() -> Vec<NetworkInterface> {
 }
 
 #[tauri::command]
-fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, AppState>) {
+fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, state: State<'_, AppState>) {
     let mut stop_flag_lock = state.sniffer_stop_flag.lock().unwrap();
     if let Some(old_flag) = stop_flag_lock.take() {
         old_flag.store(true, Ordering::Relaxed);
@@ -125,52 +125,34 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
     let default_unknown_timeout_s = *state.default_unknown_timeout_s.lock().unwrap();
     let discovery_table_arc = Arc::clone(&state.discovery_table);
 
-    // One thread per interface for LLDP and SAP capture via pnet
-    for ip in &interface_ips {
+    // Un thread par interface pour la capture LLDP et SAP via pcap
+    for network_interface in &selected_interfaces {
         let stop_flag_node = Arc::clone(&stop_flag);
         let discovery_node = Arc::clone(&discovery_table_arc);
         let app_node = app.clone();
-        let target_ip = ip.clone();
+        let target_name = network_interface.name.clone();
 
         thread::spawn(move || {
-            // Trouver le device pcap correspondant à l'IP sélectionnée
-            let pcap_devices = Device::list().unwrap_or_default();
-            let mut found_device = None;
-
-            for d in &pcap_devices {
-                if d.addresses.iter().any(|addr| addr.addr.to_string() == target_ip) {
-                    found_device = Some(d.clone());
-                    break;
-                }
-            }
-
-            let device = match found_device {
+            let pcap_devices = pcap::Device::list().unwrap_or_default();
+            
+            let device = match pcap_devices.into_iter().find(|d| d.name == target_name) {
                 Some(d) => d,
                 None => {
-                    eprintln!("⚠️ ÉCHEC : pcap ne trouve pas l'interface avec l'IP {}", target_ip);
-                    println!("--- Liste des interfaces visibles par pcap ---");
-                    for d in pcap_devices {
-                        let ips: Vec<String> = d.addresses.iter().map(|a| a.addr.to_string()).collect();
-                        println!(" - Nom: {} | IPs: {:?} | Desc: {:?}", d.name, ips, d.desc);
-                    }
-                    println!("----------------------------------------------");
+                    eprintln!("⚠️ ÉCHEC CRITIQUE : pcap ne trouve pas l'interface par son nom exact : {}", target_name);
                     return;
                 }
             };
-                println!("Ouverture pcap sur : {}", device.name);
-                let mut cap = match pcap::Capture::from_device(device) {
-                    Ok(c) => match c.promisc(true).snaplen(65535).timeout(100).open() {
-                        Ok(o) => o,
-                        Err(e) => {
-                            eprintln!("Erreur fatale ouverture pcap : {}", e);
-                            return;
-                        }
-                    },
-                    Err(e) => {
-                        eprintln!("Erreur device pcap : {}", e);
-                        return;
-                    }
-                };
+
+            println!("Ouverture pcap RÉUSSIE sur le matériel : {}", device.name);
+
+            // Ouverture façon Wireshark
+            let mut cap = pcap::Capture::from_device(device)
+                .unwrap()
+                .promisc(true)
+                .snaplen(65535)
+                .timeout(100) // Timeout court indispensable
+                .open()
+                .expect("Erreur fatale lors de l'ouverture du handle pcap");
 
                 println!("SUCCÈS : Canal pcap ouvert !");
 
@@ -295,7 +277,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
     let stop_flag_ptp = Arc::clone(&stop_flag);
     let app_ptp = app.clone();
     let discovery_ptp = Arc::clone(&discovery_table_arc);
-    let selected_ips = interface_ips.clone();
+    let selected_ips: Vec<String> = selected_interfaces.iter().map(|i| i.ip.clone()).collect();
 
     thread::spawn(move || {
         let ptp_addr = Ipv4Addr::new(224, 0, 1, 129);
