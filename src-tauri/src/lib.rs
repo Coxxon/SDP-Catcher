@@ -142,9 +142,20 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                 config.promiscuous = true;
 
                 if let Some(iface) = interface {
-                    let (_, mut rx) = match datalink::channel(&iface, config) {
-                        Ok(Channel::Ethernet(tx, rx)) => (tx, rx),
-                        _ => return,
+                    println!("Tentative d'ouverture du canal pnet sur l'interface : {}", iface.name);
+                    let mut rx = match datalink::channel(&iface, config) {
+                        Ok(Channel::Ethernet(_, rx)) => {
+                            println!("SUCCÈS : Canal Ethernet pnet ouvert !");
+                            rx
+                        },
+                        Ok(_) => {
+                            eprintln!("ERREUR : Type de canal non supporté.");
+                            return;
+                        },
+                        Err(e) => {
+                            eprintln!("ERREUR CRITIQUE pnet : Impossible d'ouvrir le canal. Npcap est-il bien installé en mode compatibilité WinPcap ? Détail : {}", e);
+                            return;
+                        }
                     };
 
                     while !stop_flag_node.load(Ordering::Relaxed) {
