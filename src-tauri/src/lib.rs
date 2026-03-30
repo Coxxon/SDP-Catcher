@@ -131,14 +131,33 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
         let discovery_node = Arc::clone(&discovery_table_arc);
         let app_node = app.clone();
         let target_name = network_interface.name.clone();
+        let target_ip = network_interface.ip.clone();
 
         thread::spawn(move || {
+            let mut target_npf_name = String::new();
+
+            // 1. Traduction : Trouver le vrai GUID Npcap via pnet::datalink
+            for pnet_iface in pnet::datalink::interfaces() {
+                let has_ip = pnet_iface.ips.iter().any(|ip| ip.ip().to_string() == target_ip);
+                let desc_match = pnet_iface.description == target_name;
+                
+                if has_ip || desc_match {
+                    target_npf_name = pnet_iface.name.clone(); // Récupère le \Device\NPF_{...}
+                    break;
+                }
+            }
+
+            if target_npf_name.is_empty() {
+                eprintln!("⚠️ ÉCHEC : Impossible de traduire l'interface {} ({}) en GUID matériel.", target_name, target_ip);
+                return;
+            }
+
+            // 2. Accroche pcap
             let pcap_devices = pcap::Device::list().unwrap_or_default();
-            
-            let device = match pcap_devices.into_iter().find(|d| d.name == target_name) {
+            let device = match pcap_devices.into_iter().find(|d| d.name == target_npf_name) {
                 Some(d) => d,
                 None => {
-                    eprintln!("⚠️ ÉCHEC CRITIQUE : pcap ne trouve pas l'interface par son nom exact : {}", target_name);
+                    eprintln!("⚠️ ÉCHEC CRITIQUE : pcap ne trouve pas le matériel NPF : {}", target_npf_name);
                     return;
                 }
             };
