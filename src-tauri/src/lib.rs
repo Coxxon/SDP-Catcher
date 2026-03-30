@@ -187,13 +187,16 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                                 if udp.get_destination() == 9875 {
                                                     let sap_payload = udp.payload();
                                                     if let Some(pos) = sap_payload.windows(3).position(|w| w == b"v=0") {
-                                                        let sdp_content = String::from_utf8_lossy(&sap_payload[pos..]);
+                                                        let sdp_bytes = &sap_payload[pos..];
+                                                        let sdp_content = String::from_utf8_lossy(sdp_bytes).to_string();
+                                                        
                                                         let mut origin_ip = ipv4.get_source().to_string();
                                                         let mut sap_name = "---".to_string();
                                                         let mut stream_name = "---".to_string();
                                                         let mut ptp_id_from_sdp = String::new();
 
                                                         for line in sdp_content.lines() {
+                                                            let line = line.trim();
                                                             if line.starts_with("o=") {
                                                                 let parts: Vec<&str> = line.split_whitespace().collect();
                                                                 if parts.len() >= 6 && parts[5] != "0.0.0.0" { origin_ip = parts[5].to_string(); }
