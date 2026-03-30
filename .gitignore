@@ -31,3 +31,6 @@ src-tauri/gen/
 *.env.*
 dist/
 dist-ssr/
+
+# Local architecture documentation — never pushed to GitHub
+.architecture/

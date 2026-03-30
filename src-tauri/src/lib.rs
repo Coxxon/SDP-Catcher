@@ -11,6 +11,9 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use manufacturer::identify_manufacturer;
 use pnet::datalink::{self, Channel};
 use pnet::packet::ethernet::{EtherTypes, EthernetPacket};
+use pnet::packet::ip::IpNextHeaderProtocols;
+use pnet::packet::ipv4::Ipv4Packet;
+use pnet::packet::udp::UdpPacket;
 use pnet::packet::Packet;
 use socket2::{Domain, Protocol, Socket, Type};
 use std::collections::HashMap;
@@ -146,36 +149,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
     let default_unknown_timeout_s = *state.default_unknown_timeout_s.lock().unwrap();
     let discovery_table_arc = Arc::clone(&state.discovery_table);
 
-    thread::spawn(move || {
-        let sap_addr = Ipv4Addr::new(239, 255, 255, 255);
-        let sap_port = 9875;
-
-        let mut sap_socket = None;
-
-        // Try binding SAP
-        for _ in 0..5 {
-            if stop_flag.load(Ordering::Relaxed) {
-                return;
-            }
-            if let Ok(s) = UdpSocket::bind(("0.0.0.0", sap_port)) {
-                s.set_read_timeout(Some(Duration::from_millis(500))).ok();
-                for ip in &interface_ips {
-                    if let Ok(iface_addr) = ip.parse::<Ipv4Addr>() {
-                        s.join_multicast_v4(&sap_addr, &iface_addr).ok();
-                    }
-                }
-                sap_socket = Some(s);
-                break;
-            }
-            thread::sleep(Duration::from_secs(1));
-        }
-
-        let sap_socket = match sap_socket {
-            Some(s) => s,
-            None => return,
-        };
-
-        // Spawn LLDP/PTP Sniffer thread
+        // Spawn LLDP/SAP Sniffer threads (combined capture)
         for ip in &interface_ips {
             let stop_flag_lldp = Arc::clone(&stop_flag);
             let discovery_lldp = Arc::clone(&discovery_table_arc);
@@ -215,6 +189,87 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                                         app_lldp
                                             .emit("discovery-update", (mac, entry.clone()))
                                             .ok();
+                                    }
+                                }
+                            } else if eth.get_ethertype() == EtherTypes::Ipv4 {
+                                if let Some(ipv4) = Ipv4Packet::new(eth.payload()) {
+                                    if ipv4.get_next_level_protocol() == IpNextHeaderProtocols::Udp {
+                                        if let Some(udp) = UdpPacket::new(ipv4.payload()) {
+                                            if udp.get_destination() == 9875 {
+                                                let payload = udp.payload();
+                                                if let Some(pos) = payload.windows(3).position(|w| w == b"v=0") {
+                                                    if let Ok(sdp_content) = std::str::from_utf8(&payload[pos..]) {
+                                                        let mut origin_ip = ipv4.get_source().to_string();
+                                                        let mut sap_name = "---".to_string();
+                                                        let mut stream_name = "---".to_string();
+                                                        let mut ptp_id_from_sdp = String::new();
+
+                                                        for line in sdp_content.lines() {
+                                                            if line.starts_with("o=") {
+                                                                let parts: Vec<&str> = line.split_whitespace().collect();
+                                                                if parts.len() >= 6 && parts[5] != "0.0.0.0" {
+                                                                    origin_ip = parts[5].to_string();
+                                                                }
+                                                            } else if line.starts_with("s=") {
+                                                                stream_name = line[2..].trim().to_string();
+                                                            } else if line.starts_with("i=") {
+                                                                sap_name = line[2..].trim().to_string();
+                                                            } else if line.starts_with("a=ts-refclk:ptp=IEEE1588-2008:") {
+                                                                let parts: Vec<&str> = line.split(':').collect();
+                                                                if parts.len() >= 3 {
+                                                                    ptp_id_from_sdp = parts[2].to_uppercase();
+                                                                }
+                                                            }
+                                                        }
+
+                                                        let best_name = if stream_name != "---" && !stream_name.is_empty() { stream_name } else { sap_name };
+                                                        let (mac, _oui) = get_mac_from_arp(&origin_ip);
+                                                        let key = if mac != "Unknown" { mac.clone() } else { origin_ip.clone() };
+
+                                                        {
+                                                            let mut table = discovery_lldp.lock().unwrap();
+                                                            let entry = table.entry(key.clone()).or_insert(DeviceInfo {
+                                                                ip: origin_ip.clone(),
+                                                                name: best_name.clone(),
+                                                            });
+                                                            if entry.ip != origin_ip || (best_name != "---" && entry.name != best_name) {
+                                                                entry.ip = origin_ip.clone();
+                                                                if best_name != "---" { entry.name = best_name.clone(); }
+                                                                app_lldp.emit("discovery-update", (key.clone(), entry.clone())).ok();
+                                                            }
+                                                        }
+
+                                                        if !ptp_id_from_sdp.is_empty() {
+                                                            let mut table = discovery_lldp.lock().unwrap();
+                                                            table.insert(ptp_id_from_sdp.clone(), DeviceInfo {
+                                                                ip: origin_ip.clone(),
+                                                                name: best_name.clone(),
+                                                            });
+                                                            app_lldp.emit("discovery-update", (ptp_id_from_sdp.clone(), DeviceInfo { ip: origin_ip.clone(), name: best_name.clone() })).ok();
+                                                        }
+
+                                                        let mut mfr_enum = if !ptp_id_from_sdp.is_empty() { identify_manufacturer(&ptp_id_from_sdp) } else { manufacturer::Manufacturer::Unknown };
+                                                        if mfr_enum == manufacturer::Manufacturer::Unknown { mfr_enum = identify_manufacturer(&mac); }
+                                                        
+                                                        let use_global = {
+                                                            let state = app_lldp.state::<AppState>();
+                                                            let map = state.device_timeout_modes.lock().unwrap();
+                                                            map.get(&origin_ip).copied().unwrap_or(false)
+                                                        };
+
+                                                        let sap_timeout_ms = if use_global { default_unknown_timeout_s * 1000 } else { mfr_enum.default_timeout_ms(default_unknown_timeout_s) };
+
+                                                        app_lldp.emit("sdp-discovered", SdpPayload {
+                                                            source_ip: origin_ip,
+                                                            sdp_content: sdp_content.to_string(),
+                                                            mac,
+                                                            manufacturer: mfr_enum.to_string(),
+                                                            sap_timeout_ms,
+                                                        }).ok();
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -314,117 +369,6 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
             }
         });
 
-        // Main thread handles SAP with Gleaning
-        let mut buf = [0u8; 4096];
-        let discovery_sap = Arc::clone(&discovery_table_arc);
-        while !stop_flag.load(Ordering::Relaxed) {
-            if let Ok((size, src)) = sap_socket.recv_from(&mut buf) {
-                let payload = &buf[..size];
-                if let Some(pos) = payload.windows(3).position(|w| w == b"v=0") {
-                    if let Ok(sdp_content) = std::str::from_utf8(&payload[pos..]) {
-                        // SAP Gleaning: Prioritize 's=' for Stream/Device name, then 'i='
-                        let mut origin_ip = src.ip().to_string();
-                        let mut sap_name = "---".to_string();
-                        let mut stream_name = "---".to_string();
-                        let mut ptp_id_from_sdp = String::new();
-
-                        for line in sdp_content.lines() {
-                            if line.starts_with("o=") {
-                                let parts: Vec<&str> = line.split_whitespace().collect();
-                                if parts.len() >= 6 && parts[5] != "0.0.0.0" {
-                                    origin_ip = parts[5].to_string();
-                                }
-                            } else if line.starts_with("s=") {
-                                stream_name = line[2..].trim().to_string();
-                            } else if line.starts_with("i=") {
-                                sap_name = line[2..].trim().to_string();
-                            } else if line.starts_with("a=ts-refclk:ptp=IEEE1588-2008:") {
-                                let parts: Vec<&str> = line.split(':').collect();
-                                if parts.len() >= 3 {
-                                    ptp_id_from_sdp = parts[2].to_uppercase();
-                                }
-                            }
-                        }
-
-                        // Use s= if available (best for broadcast streams), otherwise i=
-                        let best_name = if stream_name != "---" && !stream_name.is_empty() {
-                            stream_name
-                        } else {
-                            sap_name
-                        };
-
-                        let (mac, _oui) = get_mac_from_arp(&origin_ip);
-                        let key = if mac != "Unknown" { mac.clone() } else { origin_ip.clone() };
-
-                        {
-                            let mut table = discovery_sap.lock().unwrap();
-                            let entry = table.entry(key.clone()).or_insert(DeviceInfo {
-                                ip: origin_ip.clone(),
-                                name: best_name.clone(),
-                            });
-
-                            if entry.ip != origin_ip
-                                || (best_name != "---" && entry.name != best_name)
-                            {
-                                entry.ip = origin_ip.clone();
-                                if best_name != "---" {
-                                    entry.name = best_name.clone();
-                                }
-                                app.emit("discovery-update", (key.clone(), entry.clone()))
-                                    .ok();
-                            }
-                        }
-
-                        if !ptp_id_from_sdp.is_empty() {
-                            let mut table = discovery_sap.lock().unwrap();
-                            table.insert(ptp_id_from_sdp.clone(), DeviceInfo {
-                                ip: origin_ip.clone(),
-                                name: best_name.clone(),
-                            });
-                            app.emit("discovery-update", (ptp_id_from_sdp.clone(), DeviceInfo { ip: origin_ip.clone(), name: best_name.clone() })).ok();
-                        }
-
-                        // Manufacturer identification: PTP ID OUI has absolute priority
-                        let mut mfr_enum = if !ptp_id_from_sdp.is_empty() {
-                            identify_manufacturer(&ptp_id_from_sdp)
-                        } else {
-                            manufacturer::Manufacturer::Unknown
-                        };
-                        
-                        // Fallback to MAC OUI if PTP identification failed or was missing
-                        if mfr_enum == manufacturer::Manufacturer::Unknown {
-                            mfr_enum = identify_manufacturer(&mac);
-                        }
-                        
-                        // Dynamically retrieve the latest state for this IP specifically to allow hot-toggling without app restart
-                        let use_global = {
-                            let state = app.state::<AppState>();
-                            let map = state.device_timeout_modes.lock().unwrap();
-                            map.get(&origin_ip).copied().unwrap_or(false)
-                        };
-
-                        let sap_timeout_ms = if use_global {
-                            default_unknown_timeout_s * 1000
-                        } else {
-                            mfr_enum.default_timeout_ms(default_unknown_timeout_s)
-                        };
-
-                        app.emit(
-                            "sdp-discovered",
-                            SdpPayload {
-                                source_ip: origin_ip,
-                                sdp_content: sdp_content.to_string(),
-                                mac,
-                                manufacturer: mfr_enum.to_string(),
-                                sap_timeout_ms,
-                            },
-                        )
-                        .ok();
-                    }
-                }
-            }
-        }
-    });
 }
 
 fn parse_lldp(packet: &[u8]) -> Option<(String, String, String)> {
