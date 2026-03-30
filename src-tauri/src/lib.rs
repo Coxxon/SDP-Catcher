@@ -16,6 +16,7 @@ use pnet::packet::ipv4::Ipv4Packet;
 use pnet::packet::udp::UdpPacket;
 use pnet::packet::vlan::VlanPacket;
 use pnet::packet::Packet;
+use dns_parser::{Packet as DnsPacket, RData};
 use socket2::{Domain, Protocol, Socket, Type};
 use std::collections::HashMap;
 
@@ -125,7 +126,7 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
     let default_unknown_timeout_s = *state.default_unknown_timeout_s.lock().unwrap();
     let discovery_table_arc = Arc::clone(&state.discovery_table);
 
-    // Un thread par interface pour la capture LLDP et SAP via pcap
+    // Un thread par interface pour la capture LLDP, SAP et mDNS via pcap
     for network_interface in &selected_interfaces {
         let stop_flag_node = Arc::clone(&stop_flag);
         let discovery_node = Arc::clone(&discovery_table_arc);
@@ -134,6 +135,7 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
         let target_ip = network_interface.ip.clone();
 
         thread::spawn(move || {
+            let mut mdns_cache: HashMap<String, String> = HashMap::new();
             let mut target_npf_name = String::new();
 
             // 1. Traduction : Trouver le vrai GUID Npcap via pnet::datalink
@@ -142,7 +144,7 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
                 let desc_match = pnet_iface.description == target_name;
                 
                 if has_ip || desc_match {
-                    target_npf_name = pnet_iface.name.clone(); // Récupère le \Device\NPF_{...}
+                    target_npf_name = pnet_iface.name.clone();
                     break;
                 }
             }
@@ -162,118 +164,142 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
                 }
             };
 
-            println!("Ouverture pcap RÉUSSIE sur le matériel : {}", device.name);
-
             // Ouverture façon Wireshark
             let mut cap = pcap::Capture::from_device(device)
                 .unwrap()
                 .promisc(true)
                 .snaplen(65535)
-                .timeout(100) // Timeout court indispensable
+                .timeout(100)
                 .open()
                 .expect("Erreur fatale lors de l'ouverture du handle pcap");
 
-                println!("SUCCÈS : Canal pcap ouvert !");
+            while !stop_flag_node.load(Ordering::Relaxed) {
+                match cap.next_packet() {
+                    Ok(packet) => {
+                        if let Some(eth) = EthernetPacket::new(packet.data) {
+                            let mut current_ethertype = eth.get_ethertype();
+                            let mut current_payload = eth.payload();
+                            let vlan_holder;
 
-                while !stop_flag_node.load(Ordering::Relaxed) {
-                    match cap.next_packet() {
-                        Ok(packet) => {
-                            if let Some(eth) = EthernetPacket::new(packet.data) {
-                                let mut current_ethertype = eth.get_ethertype();
-                                let mut current_payload = eth.payload();
-                                let vlan_holder;
+                            if current_ethertype == EtherTypes::Vlan {
+                                vlan_holder = VlanPacket::new(current_payload);
+                                if let Some(ref vlan) = vlan_holder {
+                                    current_ethertype = vlan.get_ethertype();
+                                    current_payload = vlan.payload();
+                                } else { continue; }
+                            } else { vlan_holder = None; }
 
-                                if current_ethertype == EtherTypes::Vlan {
-                                    vlan_holder = VlanPacket::new(current_payload);
-                                    if let Some(ref vlan) = vlan_holder {
-                                        current_ethertype = vlan.get_ethertype();
-                                        current_payload = vlan.payload();
-                                    } else {
-                                        continue;
+                            if current_ethertype == EtherTypes::Lldp {
+                                if let Some((mac, name, ip)) = parse_lldp(current_payload) {
+                                    let mut table = discovery_node.lock().unwrap();
+                                    let entry = table.entry(mac.clone()).or_insert(DeviceInfo { ip: ip.clone(), name: name.clone() });
+                                    if entry.ip != ip || entry.name != name {
+                                        entry.ip = ip;
+                                        entry.name = name;
+                                        app_node.emit("discovery-update", (mac, entry.clone())).ok();
                                     }
-                                } else {
-                                    vlan_holder = None;
                                 }
+                            } 
+                            else if current_ethertype == EtherTypes::Ipv4 {
+                                if let Some(ipv4) = Ipv4Packet::new(current_payload) {
+                                    if ipv4.get_next_level_protocol() == IpNextHeaderProtocols::Udp {
+                                        if let Some(udp) = UdpPacket::new(ipv4.payload()) {
+                                            let dest_port = udp.get_destination();
+                                            let src_port = udp.get_source();
 
-                                if current_ethertype == EtherTypes::Lldp {
-                                    if let Some((mac, name, ip)) = parse_lldp(current_payload) {
-                                        let mut table = discovery_node.lock().unwrap();
-                                        let entry = table.entry(mac.clone()).or_insert(DeviceInfo { ip: ip.clone(), name: name.clone() });
-                                        if entry.ip != ip || entry.name != name {
-                                            entry.ip = ip;
-                                            entry.name = name;
-                                            app_node.emit("discovery-update", (mac, entry.clone())).ok();
-                                        }
-                                    }
-                                } 
-                                else if current_ethertype == EtherTypes::Ipv4 {
-                                    if let Some(ipv4) = Ipv4Packet::new(current_payload) {
-                                        if ipv4.get_next_level_protocol() == IpNextHeaderProtocols::Udp {
-                                            if let Some(udp) = UdpPacket::new(ipv4.payload()) {
-                                                if udp.get_destination() == 9875 {
-                                                    let sap_payload = udp.payload();
-                                                    if let Some(pos) = sap_payload.windows(3).position(|w| w == b"v=0") {
-                                                        let sdp_bytes = &sap_payload[pos..];
-                                                        let sdp_content = String::from_utf8_lossy(sdp_bytes).to_string();
-                                                        
-                                                        let mut origin_ip = ipv4.get_source().to_string();
-                                                        let mut sap_name = "---".to_string();
-                                                        let mut stream_name = "---".to_string();
-                                                        let mut ptp_id_from_sdp = String::new();
+                                            // --- 1. BRANCHE SAP (9875) ---
+                                            if dest_port == 9875 {
+                                                let sap_payload = udp.payload();
+                                                if let Some(pos) = sap_payload.windows(3).position(|w| w == b"v=0") {
+                                                    let sdp_bytes = &sap_payload[pos..];
+                                                    let sdp_content = String::from_utf8_lossy(sdp_bytes).to_string();
+                                                    
+                                                    let mut origin_ip = ipv4.get_source().to_string();
+                                                    let mut sap_name = "---".to_string();
+                                                    let mut stream_name = "---".to_string();
+                                                    let mut ptp_id_from_sdp = String::new();
 
-                                                        for line in sdp_content.lines() {
-                                                            let line = line.trim();
-                                                            if line.starts_with("o=") {
-                                                                let parts: Vec<&str> = line.split_whitespace().collect();
-                                                                if parts.len() >= 6 && parts[5] != "0.0.0.0" { origin_ip = parts[5].to_string(); }
-                                                            } else if line.starts_with("s=") {
-                                                                stream_name = line[2..].trim().to_string();
-                                                            } else if line.starts_with("i=") {
-                                                                sap_name = line[2..].trim().to_string();
-                                                            } else if line.starts_with("a=ts-refclk:ptp=IEEE1588-2008:") {
-                                                                let parts: Vec<&str> = line.split(':').collect();
-                                                                if parts.len() >= 3 { ptp_id_from_sdp = parts[2].to_uppercase(); }
-                                                            }
+                                                    for line in sdp_content.lines() {
+                                                        let line = line.trim();
+                                                        if line.starts_with("o=") {
+                                                            let parts: Vec<&str> = line.split_whitespace().collect();
+                                                            if parts.len() >= 6 && parts[5] != "0.0.0.0" { origin_ip = parts[5].to_string(); }
+                                                        } else if line.starts_with("s=") {
+                                                            stream_name = line[2..].trim().to_string();
+                                                        } else if line.starts_with("i=") {
+                                                            sap_name = line[2..].trim().to_string();
+                                                        } else if line.starts_with("a=ts-refclk:ptp=IEEE1588-2008:") {
+                                                            let parts: Vec<&str> = line.split(':').collect();
+                                                            if parts.len() >= 3 { ptp_id_from_sdp = parts[2].to_uppercase(); }
                                                         }
+                                                    }
 
-                                                        let best_name = if !stream_name.is_empty() && stream_name != "---" { stream_name } else { sap_name };
-                                                        let (mac, _oui) = get_mac_from_arp(&origin_ip);
-                                                        let key = if mac != "Unknown" { mac.clone() } else { origin_ip.clone() };
+                                                    let best_name = if !stream_name.is_empty() && stream_name != "---" { stream_name } else { sap_name };
+                                                    let (mac, _oui) = get_mac_from_arp(&origin_ip);
+                                                    let key = if mac != "Unknown" { mac.clone() } else { origin_ip.clone() };
 
-                                                        {
-                                                            let mut table = discovery_node.lock().unwrap();
-                                                            let entry = table.entry(key.clone()).or_insert(DeviceInfo { ip: origin_ip.clone(), name: best_name.clone() });
-                                                            if entry.ip != origin_ip || (best_name != "---" && entry.name != best_name) {
-                                                                entry.ip = origin_ip.clone();
-                                                                if best_name != "---" { entry.name = best_name.clone(); }
-                                                                app_node.emit("discovery-update", (key.clone(), entry.clone())).ok();
-                                                            }
+                                                    // Résolution mDNS Priority
+                                                    let final_device_name = if let Some(mdns_name) = mdns_cache.get(&origin_ip) {
+                                                        mdns_name.clone()
+                                                    } else {
+                                                        best_name.clone()
+                                                    };
+
+                                                    {
+                                                        let mut table = discovery_node.lock().unwrap();
+                                                        let entry = table.entry(key.clone()).or_insert(DeviceInfo { ip: origin_ip.clone(), name: final_device_name.clone() });
+                                                        if entry.ip != origin_ip || (final_device_name != "---" && entry.name != final_device_name) {
+                                                            entry.ip = origin_ip.clone();
+                                                            if final_device_name != "---" { entry.name = final_device_name.clone(); }
+                                                            app_node.emit("discovery-update", (key.clone(), entry.clone())).ok();
                                                         }
 
                                                         if !ptp_id_from_sdp.is_empty() {
-                                                            let mut table = discovery_node.lock().unwrap();
-                                                            table.insert(ptp_id_from_sdp.clone(), DeviceInfo { ip: origin_ip.clone(), name: best_name.clone() });
-                                                            app_node.emit("discovery-update", (ptp_id_from_sdp.clone(), DeviceInfo { ip: origin_ip.clone(), name: best_name.clone() })).ok();
+                                                            table.insert(ptp_id_from_sdp.clone(), DeviceInfo { ip: origin_ip.clone(), name: final_device_name.clone() });
+                                                            app_node.emit("discovery-update", (ptp_id_from_sdp.clone(), DeviceInfo { ip: origin_ip.clone(), name: final_device_name.clone() })).ok();
                                                         }
+                                                    }
 
-                                                        let mut mfr_enum = if !ptp_id_from_sdp.is_empty() { identify_manufacturer(&ptp_id_from_sdp) } else { manufacturer::Manufacturer::Unknown };
-                                                        if mfr_enum == manufacturer::Manufacturer::Unknown { mfr_enum = identify_manufacturer(&mac); }
-                                                        
-                                                        let use_global = {
-                                                            let state = app_node.state::<AppState>();
-                                                            let map = state.device_timeout_modes.lock().unwrap();
-                                                            map.get(&origin_ip).copied().unwrap_or(false)
-                                                        };
+                                                    let mut mfr_enum = if !ptp_id_from_sdp.is_empty() { identify_manufacturer(&ptp_id_from_sdp) } else { manufacturer::Manufacturer::Unknown };
+                                                    if mfr_enum == manufacturer::Manufacturer::Unknown { mfr_enum = identify_manufacturer(&mac); }
+                                                    
+                                                    let use_global = {
+                                                        let state = app_node.state::<AppState>();
+                                                        let map = state.device_timeout_modes.lock().unwrap();
+                                                        map.get(&origin_ip).copied().unwrap_or(false)
+                                                    };
 
-                                                        let sap_timeout_ms = if use_global { default_unknown_timeout_s * 1000 } else { mfr_enum.default_timeout_ms(default_unknown_timeout_s) };
+                                                    let sap_timeout_ms = if use_global { default_unknown_timeout_s * 1000 } else { mfr_enum.default_timeout_ms(default_unknown_timeout_s) };
 
-                                                        app_node.emit("sdp-discovered", SdpPayload {
-                                                            source_ip: origin_ip,
-                                                            sdp_content: sdp_content.to_string(),
-                                                            mac,
-                                                            manufacturer: mfr_enum.to_string(),
-                                                            sap_timeout_ms,
-                                                        }).ok();
+                                                    app_node.emit("sdp-discovered", SdpPayload {
+                                                        source_ip: origin_ip,
+                                                        sdp_content: sdp_content.to_string(),
+                                                        mac,
+                                                        manufacturer: mfr_enum.to_string(),
+                                                        sap_timeout_ms,
+                                                    }).ok();
+                                                }
+                                            } 
+                                            // --- 2. BRANCHE mDNS (5353) ---
+                                            else if dest_port == 5353 || src_port == 5353 {
+                                                if let Ok(dns_packet) = DnsPacket::parse(udp.payload()) {
+                                                    for answer in dns_packet.answers {
+                                                        if let RData::A(ip_record) = answer.data {
+                                                            let ip_str = ip_record.0.to_string();
+                                                            let clean_name = answer.name.to_string().replace(".local", "");
+                                                            
+                                                            if !clean_name.is_empty() {
+                                                                mdns_cache.insert(ip_str.clone(), clean_name.clone());
+                                                                
+                                                                let mut table = discovery_node.lock().unwrap();
+                                                                for (key, entry) in table.iter_mut() {
+                                                                    if entry.ip == ip_str && entry.name != clean_name {
+                                                                        entry.name = clean_name.clone();
+                                                                        app_node.emit("discovery-update", (key.clone(), entry.clone())).ok();
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
@@ -281,104 +307,14 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
                                     }
                                 }
                             }
-                        },
-                        Err(pcap::Error::TimeoutExpired) => continue,
-                        Err(e) => {
-                            eprintln!("ERREUR pcap.next_packet : {}", e);
                         }
-                    }
-                }
-                println!("Sortie de la boucle de capture pcap (Thread terminé).");
-            });
-        }
-
-    // Spawn Global PTP Socket thread
-    let stop_flag_ptp = Arc::clone(&stop_flag);
-    let app_ptp = app.clone();
-    let discovery_ptp = Arc::clone(&discovery_table_arc);
-    let selected_ips: Vec<String> = selected_interfaces.iter().map(|i| i.ip.clone()).collect();
-
-    thread::spawn(move || {
-        let ptp_addr = Ipv4Addr::new(224, 0, 1, 129);
-        let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP));
-        if let Ok(socket) = socket {
-            socket.set_reuse_address(true).ok();
-            socket.set_multicast_loop_v4(true).ok();
-            if socket.bind(&"0.0.0.0:320".parse::<std::net::SocketAddr>().unwrap().into()).is_ok() {
-                let interfaces = netdev::get_interfaces();
-                let mut subnets = Vec::new();
-                for ip_str in &selected_ips {
-                    if let Ok(iface_addr) = ip_str.parse::<Ipv4Addr>() {
-                        socket.join_multicast_v4(&ptp_addr, &iface_addr).ok();
-                    }
-                    for iface in &interfaces {
-                        for ipv4 in &iface.ipv4 {
-                            if ipv4.addr.to_string() == *ip_str {
-                                subnets.push((ip_str.clone(), u32::from_be_bytes(ipv4.addr.octets()), u32::from_be_bytes(ipv4.netmask.octets())));
-                            }
-                        }
-                    }
-                }
-
-                let udp_socket: std::net::UdpSocket = socket.into();
-                udp_socket.set_read_timeout(Some(Duration::from_millis(500))).ok();
-                let mut buf = [0u8; 1024];
-                while !stop_flag_ptp.load(Ordering::Relaxed) {
-                    if let Ok((size, src)) = udp_socket.recv_from(&mut buf) {
-                        let payload = &buf[..size];
-                        if payload.len() >= 44 && payload[0] & 0x0F == 0x0B {
-                            let domain = payload[4];
-                            let ptp_id = payload[20..28].iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("-");
-                            let source_ip = src.ip().to_string();
-                            let mut matched_interface = if !selected_ips.is_empty() { selected_ips[0].clone() } else { String::new() };
-                            if let std::net::IpAddr::V4(src_v4) = src.ip() {
-                                let src_u32 = u32::from_be_bytes(src_v4.octets());
-                                for (iface_ip, ip_u, mask_u) in &subnets {
-                                    if (src_u32 & *mask_u) == (*ip_u & *mask_u) {
-                                        matched_interface = iface_ip.clone();
-                                        break;
-                                    }
-                                }
-                            }
-                            let table = discovery_ptp.lock().unwrap();
-                            let (name, final_ip) = if let Some(info) = table.get(&ptp_id) {
-                                (info.name.clone(), info.ip.clone())
-                            } else if let Some(info) = table.get(&source_ip) {
-                                (info.name.clone(), info.ip.clone())
-                            } else {
-                                ("---".to_string(), source_ip.clone())
-                            };
-                            app_ptp.emit("ptp-clock-update", PtpPayload { ptp_id, name, ip: final_ip, interface_ip: matched_interface, domain }).ok();
-                        }
-                    }
+                    },
+                    Err(pcap::Error::TimeoutExpired) => continue,
+                    Err(e) => { eprintln!("ERREUR pcap.next_packet : {}", e); }
                 }
             }
-        }
-    });
-}
-
-fn parse_lldp(packet: &[u8]) -> Option<(String, String, String)> {
-    let mut pos = 0;
-    let mut chassis_id = String::new();
-    let mut system_name = String::new();
-    let mut mgmt_ip = String::new();
-    while pos + 2 <= packet.len() {
-        let header = u16::from_be_bytes([packet[pos], packet[pos + 1]]);
-        let tlv_type = (header >> 9) as u8;
-        let tlv_len = (header & 0x01FF) as usize;
-        pos += 2;
-        if pos + tlv_len > packet.len() { break; }
-        let value = &packet[pos..pos + tlv_len];
-        match tlv_type {
-            1 => { if tlv_len >= 7 && value[0] == 4 { chassis_id = value[1..7].iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(":"); } }
-            5 => system_name = String::from_utf8_lossy(value).to_string(),
-            8 => { if tlv_len >= 5 && value[1] == 1 { mgmt_ip = value[2..6].iter().map(|b| b.to_string()).collect::<Vec<_>>().join("."); } }
-            0 => break,
-            _ => {}
-        }
-        pos += tlv_len;
+        });
     }
-    if !chassis_id.is_empty() { Some((chassis_id, system_name, mgmt_ip)) } else { None }
 }
 
 #[tauri::command]
@@ -480,4 +416,28 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+fn parse_lldp(packet: &[u8]) -> Option<(String, String, String)> {
+    let mut pos = 0;
+    let mut chassis_id = String::new();
+    let mut system_name = String::new();
+    let mut mgmt_ip = String::new();
+    while pos + 2 <= packet.len() {
+        let header = u16::from_be_bytes([packet[pos], packet[pos + 1]]);
+        let tlv_type = (header >> 9) as u8;
+        let tlv_len = (header & 0x01FF) as usize;
+        pos += 2;
+        if pos + tlv_len > packet.len() { break; }
+        let value = &packet[pos..pos + tlv_len];
+        match tlv_type {
+            1 => { if tlv_len >= 7 && value[0] == 4 { chassis_id = value[1..7].iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(":"); } }
+            5 => system_name = String::from_utf8_lossy(value).to_string(),
+            8 => { if tlv_len >= 5 && value[1] == 1 { mgmt_ip = value[2..6].iter().map(|b| b.to_string()).collect::<Vec<_>>().join("."); } }
+            0 => break,
+            _ => {}
+        }
+        pos += tlv_len;
+    }
+    if !chassis_id.is_empty() { Some((chassis_id, system_name, mgmt_ip)) } else { None }
 }
