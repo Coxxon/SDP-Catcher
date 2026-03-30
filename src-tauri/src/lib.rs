@@ -158,7 +158,8 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                         }
                     };
 
-                    println!("Début de la boucle de capture pnet !");
+                    let interface_name = iface.name.clone();
+                    println!("Début de la boucle de capture pnet sur {} !", interface_name);
                     let mut debug_packet_count = 0;
 
                     while !stop_flag_node.load(Ordering::Relaxed) {
@@ -166,8 +167,21 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                             Ok(packet) => {
                                 debug_packet_count += 1;
                                 if debug_packet_count % 1000 == 0 {
-                                    println!("... {} paquets traversent la carte réseau ...", debug_packet_count);
+                                    println!("[{}] ... {} paquets traversent ...", interface_name, debug_packet_count);
                                 }
+
+                                // --- RAW BYTE RADAR ---
+                                // On cherche l'IP 239.202.29.2 (ef ca 1d 02) ou le port 9875 (26 93) n'importe où
+                                let contains_ip = packet.windows(4).any(|w| w == &[0xef, 0xca, 0x1d, 0x02]);
+                                let contains_port = packet.windows(2).any(|w| w == &[0x26, 0x93]);
+
+                                if contains_ip || contains_port {
+                                    println!(">>> TRACE BRUTE SAP TROUVÉE SUR {} <<<", interface_name);
+                                    println!("Taille : {} octets", packet.len());
+                                    let print_len = std::cmp::min(packet.len(), 50);
+                                    println!("Hex : {:02x?}", &packet[..print_len]);
+                                }
+                                // ----------------------
 
                                 if let Some(eth) = EthernetPacket::new(packet) {
                                     let mut current_ethertype = eth.get_ethertype();
