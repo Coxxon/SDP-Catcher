@@ -152,7 +152,7 @@ pub fn identify_manufacturer(id: &str) -> Manufacturer {
     let oui = &clean_id[0..6];
 
     match oui {
-        "00197C" => Manufacturer::Riedel,
+        "00197C" | "001ACA" | "F8DC7A" | "0007F5" => Manufacturer::Riedel,
         "001DC1" | "000FF2" => Manufacturer::Audinate,
         "00A0DE" | "AC44F2" | "F4D580" => Manufacturer::Yamaha,
         "30D659" => Manufacturer::Merging,

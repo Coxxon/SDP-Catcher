@@ -1,6 +1,6 @@
 [package]
 name = "sdp-catcher"
-version = "1.0.0"
+version = "1.0.1"
 description = "A Tauri App"
 authors = ["Allan Le Guyader"]
 edition = "2021"

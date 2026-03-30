@@ -331,7 +331,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                         for line in sdp_content.lines() {
                             if line.starts_with("o=") {
                                 let parts: Vec<&str> = line.split_whitespace().collect();
-                                if parts.len() >= 6 {
+                                if parts.len() >= 6 && parts[5] != "0.0.0.0" {
                                     origin_ip = parts[5].to_string();
                                 }
                             } else if line.starts_with("s=") {
