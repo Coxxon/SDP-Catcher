@@ -44,7 +44,6 @@ export interface InterfaceInfo {
   mask: string;
 }
 
-const ipToLong = (ip: string) => ip.split('.').reduce((acc, octet) => (acc << 8) + parseInt(octet, 10), 0) >>> 0;
 
 function App() {
   const [activeIp, setActiveIp] = useState<string | null>(null);
@@ -439,17 +438,10 @@ function App() {
     }
   };
 
-  const filteredDevices = activeIp 
-    ? (() => {
-        const activeIface = interfaces.find(i => i.ip === activeIp);
-        if (!activeIface) return devices;
-        
-        const m = ipToLong(activeIface.mask);
-        const target = (ipToLong(activeIface.ip) & m) >>> 0;
-        
-        return devices.filter(d => ((ipToLong(d.ip) & m) >>> 0) === target);
-      })()
-    : devices;
+  // Le filtrage par masque de sous-réseau a été retiré pour permettre 
+  // la visibilité des équipements hors-réseau (ex: APIPA).
+  // L'affichage de tous les streams capturés est forcé.
+  const filteredDevices = devices;
 
 
   // Disable Context Menu Globally
