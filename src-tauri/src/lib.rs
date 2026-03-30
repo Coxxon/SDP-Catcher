@@ -133,11 +133,30 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
         let target_ip = ip.clone();
 
         thread::spawn(move || {
-            // Trouver le device pcap correspondant au GUID Windows (qui est stocké dans le nom de l'interface)
-            let device = Device::list().unwrap_or_default().into_iter()
-                .find(|d| d.addresses.iter().any(|addr| addr.addr.to_string() == target_ip));
+            // Trouver le device pcap correspondant à l'IP sélectionnée
+            let pcap_devices = Device::list().unwrap_or_default();
+            let mut found_device = None;
 
-            if let Some(device) = device {
+            for d in &pcap_devices {
+                if d.addresses.iter().any(|addr| addr.addr.to_string() == target_ip) {
+                    found_device = Some(d.clone());
+                    break;
+                }
+            }
+
+            let device = match found_device {
+                Some(d) => d,
+                None => {
+                    eprintln!("⚠️ ÉCHEC : pcap ne trouve pas l'interface avec l'IP {}", target_ip);
+                    println!("--- Liste des interfaces visibles par pcap ---");
+                    for d in pcap_devices {
+                        let ips: Vec<String> = d.addresses.iter().map(|a| a.addr.to_string()).collect();
+                        println!(" - Nom: {} | IPs: {:?} | Desc: {:?}", d.name, ips, d.desc);
+                    }
+                    println!("----------------------------------------------");
+                    return;
+                }
+            };
                 println!("Ouverture pcap sur : {}", device.name);
                 let mut cap = match pcap::Capture::from_device(device) {
                     Ok(c) => match c.promisc(true).snaplen(65535).timeout(100).open() {
@@ -269,8 +288,7 @@ fn start_sniffing(app: AppHandle, interface_ips: Vec<String>, state: State<'_, A
                     }
                 }
                 println!("Sortie de la boucle de capture pcap (Thread terminé).");
-            }
-        });
+            });
         }
 
     // Spawn Global PTP Socket thread
