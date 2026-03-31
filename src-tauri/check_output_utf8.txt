@@ -1,0 +1,106 @@
+﻿cargo :     Checking 
+sdp-catcher v1.0.1 (D:\U
+tilisateur\Documents\Sit
+es_web\SDP 
+Catcher\src-tauri)
+Au caractère Ligne:1 : 
+15
++ cd src-tauri; cargo 
+check > 
+check_output.txt 2>&1
++               ~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
+~~~
+    + CategoryInfo      
+        : NotSpecified  
+  : (    Checking sd.   
+ ..cher\src-tauri):S    
+tring) [], RemoteEx    
+ception
+    + FullyQualifiedErr 
+   orId : NativeComman  
+  dError
+ 
+warning: unused import: 
+`pcap::Device`
+  --> src\lib.rs:12:5
+   |
+12 | use pcap::Device;
+   |     ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unuse
+d_imports)]` (part of 
+`#[warn(unused)]`) on 
+by default
+
+error[E0599]: no 
+variant or associated 
+item named `Ptr` found 
+for enum `RData<'a>` in 
+the current scope
+   --> src\lib.rs:321:78
+    |
+321 | ...               
+    } else if let 
+RData::Ptr(ptr_record) 
+= data {
+    |                   
+                        
+ ^^^ variant or 
+associated item not 
+found in `RData<'_>`
+    |
+help: there is a 
+variant with a similar 
+name
+    |
+321 -                   
+                        
+              } else if 
+let 
+RData::Ptr(ptr_record) 
+= data {
+321 +                   
+                        
+              } else if 
+let 
+RData::PTR(ptr_record) 
+= data {
+    |
+
+error[E0609]: no field 
+`authorities` on type 
+`dns_parser::Packet<'_>`
+   --> src\lib.rs:336:82
+    |
+336 | ...               
+    for authority in 
+&dns_packet.authorities 
+{ process_record(&author
+ity.name.to_string(), 
+&authority.data); }
+    |                   
+                        
+         ^^^^^^^^^^^ 
+unknown field
+    |
+    = note: available 
+fields are: `header`, 
+`questions`, `answers`, 
+`nameservers`, 
+`additional`, `opt`
+
+Some errors have 
+detailed explanations: 
+E0599, E0609.
+For more information 
+about an error, try 
+`rustc --explain E0599`.
+warning: `sdp-catcher` 
+(lib) generated 1 
+warning
+error: could not 
+compile `sdp-catcher` 
+(lib) due to 2 previous 
+errors; 1 warning 
+emitted

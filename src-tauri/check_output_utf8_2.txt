@@ -1,0 +1,186 @@
+﻿cargo :     Checking 
+sdp-catcher v1.0.1 (D:\U
+tilisateur\Documents\Sit
+es_web\SDP 
+Catcher\src-tauri)
+Au caractère Ligne:1 : 
+15
++ cd src-tauri; cargo 
+check > 
+check_output_2.txt 
+2>&1; Get-Content chec 
+...
++               ~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo      
+        : NotSpecified  
+  : (    Checking sd.   
+ ..cher\src-tauri):S    
+tring) [], RemoteEx    
+ception
+    + FullyQualifiedErr 
+   orId : NativeComman  
+  dError
+ 
+warning: unused import: 
+`pcap::Device`
+  --> src\lib.rs:12:5
+   |
+12 | use pcap::Device;
+   |     ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unuse
+d_imports)]` (part of 
+`#[warn(unused)]`) on 
+by default
+
+error[E0599]: the 
+method `to_string` 
+exists for reference `&d
+ns_parser::rdata::A`, 
+but its trait bounds 
+were not satisfied
+   --> src\lib.rs:316:84
+    |
+316 | ...               
+    let ip_str = 
+ip_record.to_string();
+    |                   
+                        
+   ^^^^^^^^^ method 
+cannot be called on 
+`&dns_parser::rdata::A` 
+due to unsatisfied 
+trait bounds
+    |
+   ::: C:\Users\allan\.c
+argo\registry\src\index.
+crates.io-1949cf8c6b5b55
+7f\dns-parser-0.8.0\src\
+rdata\a.rs:7:1
+    |
+  7 | pub struct 
+Record(pub Ipv4Addr);
+    | ----------------- 
+doesn't satisfy 
+`dns_parser::rdata::A: 
+ToString` or 
+`dns_parser::rdata::A: 
+std::fmt::Display`
+    |
+    = note: the 
+following trait bounds 
+were not satisfied:
+            
+`dns_parser::rdata::A: 
+std::fmt::Display`
+            which is 
+required by 
+`dns_parser::rdata::A: 
+ToString`
+            
+`&dns_parser::rdata::A: 
+std::fmt::Display`
+            which is 
+required by 
+`&dns_parser::rdata::A: 
+ToString`
+
+error[E0599]: no 
+variant or associated 
+item named `Ptr` found 
+for enum `RData<'a>` in 
+the current scope
+   --> src\lib.rs:321:78
+    |
+321 | ...               
+    } else if let 
+RData::Ptr(ptr_record) 
+= data {
+    |                   
+                        
+ ^^^ variant or 
+associated item not 
+found in `RData<'_>`
+    |
+help: there is a 
+variant with a similar 
+name
+    |
+321 -                   
+                        
+              } else if 
+let 
+RData::Ptr(ptr_record) 
+= data {
+321 +                   
+                        
+              } else if 
+let 
+RData::PTR(ptr_record) 
+= data {
+    |
+
+error[E0609]: no field 
+`authority` on type 
+`dns_parser::Packet<'_>`
+   --> src\lib.rs:336:82
+    |
+336 | ...               
+    for authority in 
+&dns_packet.authority { 
+process_record(&authorit
+y.name.to_string(), 
+&authority.data); }
+    |                   
+                        
+         ^^^^^^^^^ 
+unknown field
+    |
+    = note: available 
+fields are: `header`, 
+`questions`, `answers`, 
+`nameservers`, 
+`additional`, `opt`
+
+error[E0282]: type 
+annotations needed
+   --> src\lib.rs:341:79
+    |
+341 | ...               
+    mdns_cache.insert(ip
+_str.clone(), 
+clean_name.clone());
+    |                   
+                      
+^^^^^^ cannot infer type
+
+error[E0282]: type 
+annotations needed
+   --> src\lib.rs:341:95
+    |
+341 | ...               
+    mdns_cache.insert(ip
+_str.clone(), 
+clean_name.clone());
+    |                   
+                        
+              
+^^^^^^^^^^ cannot infer 
+type
+
+Some errors have 
+detailed explanations: 
+E0282, E0599, E0609.
+For more information 
+about an error, try 
+`rustc --explain E0282`.
+warning: `sdp-catcher` 
+(lib) generated 1 
+warning
+error: could not 
+compile `sdp-catcher` 
+(lib) due to 5 previous 
+errors; 1 warning 
+emitted

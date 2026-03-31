@@ -137,6 +137,22 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
         thread::spawn(move || {
             let mut mdns_cache: HashMap<String, String> = HashMap::new();
             let mut target_npf_name = String::new();
+            let mdns_sender = std::net::UdpSocket::bind("0.0.0.0:0").unwrap();
+
+            let send_mdns_query = |ip: &str, sender: &std::net::UdpSocket| {
+                let parts: Vec<&str> = ip.split('.').collect();
+                if parts.len() == 4 {
+                    let reverse_name = format!("{}.{}.{}.{}.in-addr.arpa", parts[3], parts[2], parts[1], parts[0]);
+                    let mut query = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+                    for part in reverse_name.split('.') {
+                        query.push(part.len() as u8);
+                        query.extend_from_slice(part.as_bytes());
+                    }
+                    query.push(0); 
+                    query.extend_from_slice(&[0x00, 0x0C, 0x00, 0x01]); 
+                    let _ = sender.send_to(&query, "224.0.0.251:5353");
+                }
+            };
 
             // 1. Traduction : Trouver le vrai GUID Npcap via pnet::datalink
             for pnet_iface in pnet::datalink::interfaces() {
@@ -238,12 +254,25 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
                                                     let (mac, _oui) = get_mac_from_arp(&origin_ip);
                                                     let key = if mac != "Unknown" { mac.clone() } else { origin_ip.clone() };
 
-                                                    // Résolution mDNS Priority
-                                                    let final_device_name = if let Some(mdns_name) = mdns_cache.get(&origin_ip) {
-                                                        mdns_name.clone()
-                                                    } else {
-                                                        best_name.clone()
+                                                    // Fallback propre
+                                                    let mut mfr_enum = if !ptp_id_from_sdp.is_empty() { identify_manufacturer(&ptp_id_from_sdp) } else { manufacturer::Manufacturer::Unknown };
+                                                    if mfr_enum == manufacturer::Manufacturer::Unknown { mfr_enum = identify_manufacturer(&mac); }
+                                                    let fallback_name = format!("{} ({})", mfr_enum.to_string(), mac);
+
+                                                    let mut is_new = false;
+                                                    let final_device_name = {
+                                                        let table = discovery_node.lock().unwrap();
+                                                        if !table.contains_key(&key) { is_new = true; }
+                                                        if let Some(mdns_name) = mdns_cache.get(&origin_ip) {
+                                                            mdns_name.clone()
+                                                        } else {
+                                                            if best_name != "---" { best_name.clone() } else { fallback_name }
+                                                        }
                                                     };
+
+                                                    if is_new && !mdns_cache.contains_key(&origin_ip) {
+                                                        send_mdns_query(&origin_ip, &mdns_sender);
+                                                    }
 
                                                     {
                                                         let mut table = discovery_node.lock().unwrap();
@@ -260,9 +289,6 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
                                                         }
                                                     }
 
-                                                    let mut mfr_enum = if !ptp_id_from_sdp.is_empty() { identify_manufacturer(&ptp_id_from_sdp) } else { manufacturer::Manufacturer::Unknown };
-                                                    if mfr_enum == manufacturer::Manufacturer::Unknown { mfr_enum = identify_manufacturer(&mac); }
-                                                    
                                                     let use_global = {
                                                         let state = app_node.state::<AppState>();
                                                         let map = state.device_timeout_modes.lock().unwrap();
@@ -283,20 +309,40 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
                                             // --- 2. BRANCHE mDNS (5353) ---
                                             else if dest_port == 5353 || src_port == 5353 {
                                                 if let Ok(dns_packet) = DnsPacket::parse(udp.payload()) {
-                                                    for answer in dns_packet.answers {
-                                                        if let RData::A(ip_record) = answer.data {
+                                                    let mut new_cache_entries: Vec<(String, String)> = Vec::new();
+                                                    
+                                                    let mut process_record = |name: &str, data: &RData| {
+                                                        if let RData::A(ip_record) = data {
                                                             let ip_str = ip_record.0.to_string();
-                                                            let clean_name = answer.name.to_string().replace(".local", "");
-                                                            
+                                                            let clean_name = name.replace(".local", "");
                                                             if !clean_name.is_empty() {
-                                                                mdns_cache.insert(ip_str.clone(), clean_name.clone());
-                                                                
-                                                                let mut table = discovery_node.lock().unwrap();
-                                                                for (key, entry) in table.iter_mut() {
-                                                                    if entry.ip == ip_str && entry.name != clean_name {
-                                                                        entry.name = clean_name.clone();
-                                                                        app_node.emit("discovery-update", (key.clone(), entry.clone())).ok();
-                                                                    }
+                                                                new_cache_entries.push((ip_str, clean_name));
+                                                            }
+                                                        } else if let RData::PTR(ptr_record) = data {
+                                                            let clean_name = ptr_record.to_string().replace(".local", "");
+                                                            let name_str = name.to_string();
+                                                            if name_str.ends_with(".in-addr.arpa") {
+                                                                let parts: Vec<&str> = name_str.split('.').collect();
+                                                                if parts.len() >= 4 {
+                                                                    let ip_str = format!("{}.{}.{}.{}", parts[3], parts[2], parts[1], parts[0]);
+                                                                    new_cache_entries.push((ip_str, clean_name));
+                                                                }
+                                                            }
+                                                        }
+                                                    };
+
+                                                    for answer in &dns_packet.answers { process_record(&answer.name.to_string(), &answer.data); }
+                                                    for additional in &dns_packet.additional { process_record(&additional.name.to_string(), &additional.data); }
+                                                    for authority in &dns_packet.nameservers { process_record(&authority.name.to_string(), &authority.data); }
+
+                                                    if !new_cache_entries.is_empty() {
+                                                        let mut table = discovery_node.lock().unwrap();
+                                                        for (ip_str, clean_name) in new_cache_entries {
+                                                            mdns_cache.insert(ip_str.clone(), clean_name.clone());
+                                                            for (key, entry) in table.iter_mut() {
+                                                                if entry.ip == ip_str && entry.name != clean_name {
+                                                                    entry.name = clean_name.clone();
+                                                                    app_node.emit("discovery-update", (key.clone(), entry.clone())).ok();
                                                                 }
                                                             }
                                                         }
@@ -315,6 +361,70 @@ fn start_sniffing(app: AppHandle, selected_interfaces: Vec<NetworkInterface>, st
             }
         });
     }
+
+    // Spawn Global PTP Socket thread
+    let stop_flag_ptp = Arc::clone(&stop_flag);
+    let app_ptp = app.clone();
+    let discovery_ptp = Arc::clone(&discovery_table_arc);
+    let selected_ips: Vec<String> = selected_interfaces.iter().map(|i| i.ip.clone()).collect();
+
+    thread::spawn(move || {
+        let ptp_addr = Ipv4Addr::new(224, 0, 1, 129);
+        let socket = Socket::new(Domain::IPV4, Type::DGRAM, Some(Protocol::UDP));
+        if let Ok(socket) = socket {
+            socket.set_reuse_address(true).ok();
+            socket.set_multicast_loop_v4(true).ok();
+            if socket.bind(&"0.0.0.0:320".parse::<std::net::SocketAddr>().unwrap().into()).is_ok() {
+                let interfaces = netdev::get_interfaces();
+                let mut subnets = Vec::new();
+                for ip_str in &selected_ips {
+                    if let Ok(iface_addr) = ip_str.parse::<Ipv4Addr>() {
+                        socket.join_multicast_v4(&ptp_addr, &iface_addr).ok();
+                    }
+                    for iface in &interfaces {
+                        for ipv4 in &iface.ipv4 {
+                            if ipv4.addr.to_string() == *ip_str {
+                                subnets.push((ip_str.clone(), u32::from_be_bytes(ipv4.addr.octets()), u32::from_be_bytes(ipv4.netmask.octets())));
+                            }
+                        }
+                    }
+                }
+
+                let udp_socket: std::net::UdpSocket = socket.into();
+                udp_socket.set_read_timeout(Some(Duration::from_millis(500))).ok();
+                let mut buf = [0u8; 1024];
+                while !stop_flag_ptp.load(Ordering::Relaxed) {
+                    if let Ok((size, src)) = udp_socket.recv_from(&mut buf) {
+                        let payload = &buf[..size];
+                        if payload.len() >= 44 && payload[0] & 0x0F == 0x0B {
+                            let domain = payload[4];
+                            let ptp_id = payload[20..28].iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join("-");
+                            let source_ip = src.ip().to_string();
+                            let mut matched_interface = if !selected_ips.is_empty() { selected_ips[0].clone() } else { String::new() };
+                            if let std::net::IpAddr::V4(src_v4) = src.ip() {
+                                let src_u32 = u32::from_be_bytes(src_v4.octets());
+                                for (iface_ip, ip_u, mask_u) in &subnets {
+                                    if (src_u32 & *mask_u) == (*ip_u & *mask_u) {
+                                        matched_interface = iface_ip.clone();
+                                        break;
+                                    }
+                                }
+                            }
+                            let table = discovery_ptp.lock().unwrap();
+                            let (name, final_ip) = if let Some(info) = table.get(&ptp_id) {
+                                (info.name.clone(), info.ip.clone())
+                            } else if let Some(info) = table.get(&source_ip) {
+                                (info.name.clone(), info.ip.clone())
+                            } else {
+                                ("---".to_string(), source_ip.clone())
+                            };
+                            app_ptp.emit("ptp-clock-update", PtpPayload { ptp_id, name, ip: final_ip, interface_ip: matched_interface, domain }).ok();
+                        }
+                    }
+                }
+            }
+        }
+    });
 }
 
 #[tauri::command]

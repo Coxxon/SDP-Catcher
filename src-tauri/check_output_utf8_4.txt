@@ -1,0 +1,115 @@
+﻿cargo :     Checking 
+sdp-catcher v1.0.1 (D:\U
+tilisateur\Documents\Sit
+es_web\SDP 
+Catcher\src-tauri)
+Au caractère Ligne:1 : 
+15
++ cd src-tauri; cargo 
+check > 
+check_output_4.txt 
+2>&1; Get-Content chec 
+...
++               ~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~
+    + CategoryInfo      
+        : NotSpecified  
+  : (    Checking sd.   
+ ..cher\src-tauri):S    
+tring) [], RemoteEx    
+ception
+    + FullyQualifiedErr 
+   orId : NativeComman  
+  dError
+ 
+warning: unused import: 
+`pcap::Device`
+  --> src\lib.rs:12:5
+   |
+12 | use pcap::Device;
+   |     ^^^^^^^^^^^^
+   |
+   = note: `#[warn(unuse
+d_imports)]` (part of 
+`#[warn(unused)]`) on 
+by default
+
+error[E0609]: no field 
+`1` on type 
+`&dns_parser::rdata::A`
+   --> 
+src\lib.rs:316:120
+    |
+316 | ...               
+    let ip_str = 
+format!("{}.{}.{}.{}", 
+ip_record.0, 
+ip_record.1, 
+ip_record.2, 
+ip_record.3);
+    |                   
+                        
+                        
+               ^ 
+unknown field
+    |
+    = note: available 
+field is: `0`
+
+error[E0609]: no field 
+`2` on type 
+`&dns_parser::rdata::A`
+   --> 
+src\lib.rs:316:133
+    |
+316 | ...               
+    let ip_str = 
+format!("{}.{}.{}.{}", 
+ip_record.0, 
+ip_record.1, 
+ip_record.2, 
+ip_record.3);
+    |                   
+                        
+                        
+                        
+    ^ unknown field
+    |
+    = note: available 
+field is: `0`
+
+error[E0609]: no field 
+`3` on type 
+`&dns_parser::rdata::A`
+   --> 
+src\lib.rs:316:146
+    |
+316 | ...               
+    let ip_str = 
+format!("{}.{}.{}.{}", 
+ip_record.0, 
+ip_record.1, 
+ip_record.2, 
+ip_record.3);
+    |                   
+                        
+                        
+                        
+                 ^ 
+unknown field
+    |
+    = note: available 
+field is: `0`
+
+For more information 
+about this error, try 
+`rustc --explain E0609`.
+warning: `sdp-catcher` 
+(lib) generated 1 
+warning
+error: could not 
+compile `sdp-catcher` 
+(lib) due to 3 previous 
+errors; 1 warning 
+emitted

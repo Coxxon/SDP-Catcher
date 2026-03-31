@@ -3403,6 +3403,7 @@ dependencies = [
  "pnet_packet",
  "serde",
  "serde_json",
+ "simple-dns",
  "socket2 0.5.10",
  "tauri",
  "tauri-build",
@@ -3658,6 +3659,15 @@ name = "simd-adler32"
 version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "703d5c7ef118737c72f1af64ad2f6f8c5e1921f818cdcb97b8fe6fc69bf66214"
+
+[[package]]
+name = "simple-dns"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c80e565e7dcc4f1ef247e2f395550d4cf7d777746d5988e7e4e3156b71077fc"
+dependencies = [
+ "bitflags 2.11.0",
+]
 
 [[package]]
 name = "siphasher"
